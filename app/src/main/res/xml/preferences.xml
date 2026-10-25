@@ -25,6 +25,10 @@
         <ListPreference
             app:key="bt_device"
             app:title="Bluetooth adapter" />
+        <Preference
+            app:key="ble_scan"
+            app:title="Scan for Bluetooth LE adapters"
+            app:summary="DauntlessOBD: pair it in the Dauntless OBD app first, then pick it from the list above" />
         <EditTextPreference
             app:key="tcp_host"
             app:title="Adapter IP address"
@@ -41,7 +45,7 @@
         <ListPreference
             app:key="elm_mode"
             app:title="Read mode"
-            app:defaultValue="obd"
+            app:defaultValue="auto"
             app:entries="@array/elm_mode_names"
             app:entryValues="@array/elm_mode_values"
             app:useSimpleSummaryProvider="true" />

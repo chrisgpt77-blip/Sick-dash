@@ -167,11 +167,7 @@ class DashRenderer(assets: AssetManager) {
         val cw = textWidth(cfg.car.chassis, Fonts.display, 17f * u, 0.04f)
         label(c, "SICK DASH", r.left + cw + 7f * u, y + 4f * u, 9f * u, t.dim, spacing = 0.28f)
 
-        val src = when {
-            cfg.source == Source.DEMO -> "DEMO"
-            cfg.source.usesProfile || cfg.rawCan -> "CAN"
-            else -> "OBD"
-        }
+        val src = if (cfg.source == Source.DEMO) "DEMO" else VehicleData.linkMode
         val fresh = Channel.entries.count { s[it, 2000] != null }
         val chip = "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · $fresh SIGNALS"
         val chipX = r.left + cw + 80f * u
@@ -750,8 +746,12 @@ class DashRenderer(assets: AssetManager) {
     private fun enginePage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         frame(c, r)
         val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
-        val raw = cfg.source.usesProfile || cfg.rawCan
-        display(c, "ENGINE · ${if (cfg.source == Source.DEMO) "DEMO" else if (raw) "CAN" else "OBD-II"}", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
+        val mode = when {
+            cfg.source == Source.DEMO -> "DEMO"
+            VehicleData.linkMode == "OBD" -> "OBD-II"
+            else -> VehicleData.linkMode
+        }
+        display(c, "ENGINE · $mode", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
         label(c, "LISTENING · ${s.framesPerSecond} MSG/S", inner.right, inner.top + 10f * u, 7f * u, t.dim, Paint.Align.RIGHT)
         val grid = RectF(inner.left, inner.top + 22f * u, inner.right, inner.bottom)
         val toF: (Float) -> Float = { if (cfg.imperial) it * 9f / 5f + 32f else it }

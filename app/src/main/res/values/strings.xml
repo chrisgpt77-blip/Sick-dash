@@ -3,10 +3,12 @@
     <string name="app_name">Sick Dash</string>
 
     <string-array name="elm_mode_names">
-        <item>OBD-II (works on any car)</item>
-        <item>Raw CAN monitor (uses CAN profile)</item>
+        <item>Auto (raw CAN if the bus broadcasts, else OBD-II)</item>
+        <item>OBD-II only (factory OBD port)</item>
+        <item>Raw CAN only (ASC / DCM connector)</item>
     </string-array>
     <string-array name="elm_mode_values">
+        <item>auto</item>
         <item>obd</item>
         <item>monitor</item>
     </string-array>

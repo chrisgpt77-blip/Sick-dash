@@ -2,6 +2,7 @@ package com.sickdash.service
 
 import android.content.Context
 import android.util.Log
+import com.sickdash.can.BleSerialTransport
 import com.sickdash.can.BluetoothSppTransport
 import com.sickdash.can.CanProfile
 import com.sickdash.can.Elm327Session
@@ -76,6 +77,7 @@ object ConnectionManager {
             val cfg = DashConfig.get(ctx)
             VehicleData.clearAll()
             VehicleData.sniffer.clear()
+            VehicleData.linkMode = if (cfg.source == Source.DEMO) "DEMO" else "—"
             VehicleData.setStatus(LinkState.CONNECTING, "Connecting: ${cfg.source.label}…")
             var transport: Transport? = null
             try {
@@ -88,8 +90,7 @@ object ConnectionManager {
                         try {
                             when {
                                 cfg.source.usesProfile -> SlcanSession(t, this, loadProfile(ctx)).run()
-                                cfg.rawCan -> Elm327Session(t, this, loadProfile(ctx)).runMonitor()
-                                else -> Elm327Session(t, this, null).runObd()
+                                else -> Elm327Session(t, this, runCatching { loadProfile(ctx) }.getOrNull()).run(cfg.elmMode)
                             }
                         } finally {
                             // Closing unblocks the reader thread so this scope can finish.
@@ -112,6 +113,7 @@ object ConnectionManager {
 
     private fun createTransport(ctx: Context, cfg: DashConfig): Transport = when (cfg.source) {
         Source.BT_ELM -> BluetoothSppTransport(ctx, cfg.btAddress)
+        Source.BLE_ELM -> BleSerialTransport(ctx, cfg.btAddress)
         Source.WIFI_ELM, Source.TCP_SLCAN -> TcpTransport(cfg.host, cfg.port)
         Source.USB_ELM, Source.USB_SLCAN -> UsbSerialTransport(ctx, cfg.usbBaud)
         Source.DEMO -> error("demo has no transport")

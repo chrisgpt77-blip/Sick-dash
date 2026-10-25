@@ -5,7 +5,7 @@ import org.junit.Test
 
 class GearEstimatorTest {
     private val cfg = DashConfig(
-        source = Source.DEMO, btAddress = "", host = "", port = 0, usbBaud = 0, rawCan = false,
+        source = Source.DEMO, btAddress = "", host = "", port = 0, usbBaud = 0, elmMode = com.sickdash.can.ElmMode.AUTO,
         imperial = false, themeKey = "akasaka", redline = 7500, shiftRpm = 7000, maxRpm = 8000,
         gearRatios = DashConfig.parseRatios(DashConfig.DEFAULT_RATIOS), finalDrive = 4.1f,
         tireCircumferenceM = DashConfig.tireCircumference("215/40R18"), phoneGSensor = false,

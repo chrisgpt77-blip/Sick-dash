@@ -49,6 +49,9 @@ object VehicleData {
 
     val sniffer = ConcurrentHashMap<Int, SniffEntry>()
 
+    /** What the live link turned out to be: "CAN", "OBD", "DEMO" or "ELM" while it is still deciding. */
+    @Volatile var linkMode = "—"
+
     @Volatile private var frameCounter = 0
     @Volatile private var fps = 0
     @Volatile private var fpsWindowStart = 0L

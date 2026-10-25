@@ -3,10 +3,12 @@ package com.sickdash.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
+import com.sickdash.can.ElmMode
 
 enum class Source(val key: String, val label: String) {
     DEMO("demo", "Demo (simulated drive)"),
-    BT_ELM("bt_elm", "Bluetooth OBD (ELM327 / OBDLink)"),
+    BLE_ELM("ble_elm", "Bluetooth LE OBD (DauntlessOBD, OBDLink CX, Vgate BLE)"),
+    BT_ELM("bt_elm", "Bluetooth Classic OBD (ELM327 / OBDLink MX+)"),
     WIFI_ELM("wifi_elm", "Wi-Fi OBD (ELM327 / WiCAN)"),
     USB_ELM("usb_elm", "USB OBD (ELM327 USB)"),
     USB_SLCAN("usb_slcan", "USB CAN adapter (CANable / slcan)"),
@@ -67,7 +69,7 @@ data class DashConfig(
     val host: String,
     val port: Int,
     val usbBaud: Int,
-    val rawCan: Boolean,
+    val elmMode: ElmMode,
     val imperial: Boolean,
     val themeKey: String,
     val redline: Int,
@@ -114,7 +116,11 @@ data class DashConfig(
                 port = p.getString("tcp_port", null)?.toIntOrNull()
                     ?: if (source == Source.TCP_SLCAN) 3333 else 35000,
                 usbBaud = p.getString("usb_baud", "115200")?.toIntOrNull() ?: 115200,
-                rawCan = p.getString("elm_mode", "obd") == "monitor",
+                elmMode = when (p.getString("elm_mode", "auto")) {
+                    "obd" -> ElmMode.OBD
+                    "monitor" -> ElmMode.RAW
+                    else -> ElmMode.AUTO
+                },
                 imperial = p.getString("units", "imperial") == "imperial",
                 themeKey = p.getString("theme", null) ?: car.theme,
                 redline = p.getString("redline", null)?.toIntOrNull() ?: car.redline,

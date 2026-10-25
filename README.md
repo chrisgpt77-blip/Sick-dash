@@ -43,8 +43,34 @@ The 2022+ cars put a gateway in front of the OBD-II port, so you have two ways i
 
 | | What you get | Hardware |
 |---|---|---|
-| **OBD-II port** (driver's footwell) | Standard OBD requests only: RPM, speed, throttle, coolant, intake temp, voltage. About 10–20 updates/s. | Any Bluetooth ELM327 / **OBDLink MX+** / Wi-Fi ELM327. Data source → *Bluetooth OBD*, Read mode → *OBD-II*. |
-| **DCM connector** behind the glovebox (GR86, non-US BRZ), or the **ASC connector** right of the glovebox (US BRZ) | **Everything at 50–100 Hz**: RPM, speed, pedal, brake pressure, steering angle, gear, clutch, oil and coolant temp, air temp, fuel level, all four tyre pressures. | A DCM/ASC-to-OBD adapter (e.g. Hachi Electronics), then a CAN adapter on it. Use **WiCAN** (Wi-Fi slcan), a **CANable** (USB slcan), or an **OBDLink MX+** with Read mode → *Raw CAN monitor*. |
+| **OBD-II port** (driver's footwell) | Standard OBD requests only: RPM, speed, throttle, coolant, intake temp, voltage. About 10–20 updates/s. | Any OBD adapter. |
+| **ASC connector** right of the glovebox (body CAN), or the **DCM connector** behind the glovebox | **Everything at 50–100 Hz**: RPM, speed, pedal, brake pressure, steering angle, gear, clutch, oil and coolant temp, air temp, fuel level, all four tyre pressures. | An ASC/DCM-to-OBD adapter (e.g. [Hachi Electronics](https://hachielectronics.com/products/2022-gr86-brz-asc-can-adapter)), plus a CAN-capable dongle on it. |
+
+### Recommended: DauntlessOBD Enhanced (DOBD-GR) on the Hachi ASC adapter
+
+[DauntlessOBD](https://dauntlessdevices.com/product/dobd-gr/) is a **Bluetooth LE** ELM327-compatible dongle with raw-CAN extensions. Sick Dash detects it and uses its fast path:
+- `ATTP 81` for raw CAN at 500k.
+- One `DD CRA` hardware filter per signal ID, so only the ~9 IDs the dash needs cross the Bluetooth link.
+- `DD MF` / `DD MOF 1` for overflow-tolerant monitoring.
+- `DD LEFAST 1` for faster LE transfers.
+
+Its own features, like auto lock/unlock and remote windows, keep running on the dongle while the dash reads data.
+
+1. Install the Hachi ASC adapter and plug the DauntlessOBD into it. Per Dauntless, any other adapter must supply constant 12 V and chassis ground on pin 4.
+2. **Pair it with the official Dauntless OBD app first.** Pairing needs a button press on the dongle, and other apps can only talk to it afterwards. Then close that app, because a BLE dongle accepts one app at a time.
+3. In Sick Dash → **Settings**:
+   - **Car:** GR86 or BRZ.
+   - **Data source:** *Bluetooth LE OBD*.
+   - **Bluetooth adapter:** `DauntlessOBD_xxxxxx`. It's in the paired list, or use **Scan for Bluetooth LE adapters**.
+   - **Read mode:** *Auto*.
+4. Start the engine. The header shows **CAN** once body-CAN frames arrive.
+
+**Read mode Auto** listens for broadcast traffic for 2.5 s. If frames arrive (ASC/DCM), it decodes raw CAN. If the bus is silent (the gatewayed factory OBD port), it falls back to OBD-II polling. You can move the dongle between ports without changing settings.
+
+Other adapters that work:
+- **OBDLink MX+** (Bluetooth Classic) or **OBDLink CX** (LE).
+- **WiCAN** (Wi-Fi, in slcan or ELM mode).
+- **CANable** (USB slcan).
 
 The raw-CAN decode is `app/src/main/assets/profiles/toyota_gr86_brz_gen2.json`. It's built from the community-documented gen-2 mappings in [timurrrr/ft86](https://github.com/timurrrr/ft86/blob/main/can_bus/gen2.md) and [RaceChronoDiyBleDevice](https://github.com/timurrrr/RaceChronoDiyBleDevice/blob/master/can_db/ft86_gen2.md). The unit tests check it against the example frames documented there.
 
@@ -92,7 +118,7 @@ Car-screen controls:
 ## Code layout
 
 `app/src/main/java/com/sickdash`:
-- `can/`: adapters (Bluetooth SPP, TCP, USB serial) and the ELM327 and SLCAN sessions. Also OBD PIDs, and the JSON CAN profile format (byte or bit fields, scale/offset, lookup maps, clamps).
+- `can/`: adapters (Bluetooth LE serial, Bluetooth SPP, TCP, USB serial) and the ELM327 session (OBD / raw / auto, with DauntlessOBD extensions) and SLCAN session. Also OBD PIDs, and the JSON CAN profile format (byte or bit fields, scale/offset, lookup maps, clamps).
 - `data/`: the live value store, car presets, the shift/rev-match tracker, session stats (0–60, peaks), 10-second history, phone G-sensor and the demo drive.
 - `ui/DashRenderer.kt`: the whole HUD drawn on a Canvas, shared by the phone and Android Auto.
   - `ui/CarWireframe.kt`: the procedurally lofted GR86-proportioned wireframe.
