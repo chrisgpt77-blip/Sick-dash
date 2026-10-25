@@ -110,11 +110,9 @@ Car-screen controls:
 
 ## Releases
 
-Signed APKs are published on the [Releases page](../../releases). The **Release** workflow builds, tests, signs and publishes one whenever a `v*` tag is pushed:
-
-```
-git tag v1.0.1 && git push origin v1.0.1
-```
+Signed APKs are published on the [Releases page](../../releases). The **Release** workflow builds, tests, signs and publishes one in either of two ways:
+- **Actions → Release → Run workflow**, then enter a version such as `1.0.1`. This creates the tag `v1.0.1`.
+- Push a `v*` tag: `git tag v1.0.1 && git push origin v1.0.1`.
 
 The signing key is never stored in this (public) repo. The workflow reads it from four repository secrets (**Settings → Secrets and variables → Actions**):
 - `SICKDASH_KEYSTORE_BASE64`: the keystore file, base64-encoded.

@@ -3,6 +3,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.1 (creates tag v1.0.1)"
+        required: true
 
 permissions:
   contents: write
@@ -19,8 +24,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Version from tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          name="${GITHUB_REF_NAME#v}"
+          if [ -n "$INPUT_VERSION" ]; then tag="v${INPUT_VERSION#v}"; else tag="$GITHUB_REF_NAME"; fi
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          name="${tag#v}"
           IFS=. read -r major minor patch <<< "${name%%-*}"
           echo "SICKDASH_VERSION_NAME=$name" >> "$GITHUB_ENV"
           echo "SICKDASH_VERSION_CODE=$(( ${major:-0} * 10000 + ${minor:-0} * 100 + ${patch:-0} ))" >> "$GITHUB_ENV"
@@ -65,4 +74,4 @@ jobs:
           Signed with: ${SIGNED_WITH}
           SHA-256: \`$sha\`
           NOTES
-          gh release create "$GITHUB_REF_NAME" "$apk" --title "Sick Dash ${SICKDASH_VERSION_NAME}" --notes-file notes.md
+          gh release create "$RELEASE_TAG" "$apk" --target "$GITHUB_SHA" --title "Sick Dash ${SICKDASH_VERSION_NAME}" --notes-file notes.md
