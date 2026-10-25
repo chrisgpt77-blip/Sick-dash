@@ -142,7 +142,7 @@ class DashRenderer(assets: AssetManager) {
         trailHead = (trailHead + 1) % TRAIL
         trailCount = min(trailCount + 1, TRAIL)
         val gear = gearNumber(s, cfg)
-        SessionStats.update(s, cfg.imperial)
+        SessionStats.update(s, cfg)
         ShiftTracker.update(s, gear, cfg)
         History.update(s, gear)
         com.sickdash.data.Analytics.update(s, cfg, gear)

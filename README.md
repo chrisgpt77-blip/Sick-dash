@@ -19,6 +19,7 @@ A sci-fi HUD dashboard for the **2022–2026 Toyota GR86 / Subaru BRZ** (ZN8 / Z
 ![](docs/screenshots/clutch_1280x720.png)
 ![](docs/screenshots/vdc_1280x720.png)
 ![](docs/screenshots/systems_1280x720.png)
+![](docs/screenshots/body_demo_1280x720.png)
 ![](docs/screenshots/body_1280x720.png)
 ![](docs/screenshots/diff_asc_1280x720.png)
 ![](docs/screenshots/powered_off_1280x720.png)
@@ -57,7 +58,7 @@ The pages are tabs along the bottom (two rows on a phone held upright). On the c
 | Page | |
 |---|---|
 | **Drive** | A glowing wireframe GR86 with the real car's details: trapezoid grille, swept headlights, corner fangs, the fender vent and rocker line, wraparound L tail lights, ducktail and twin exhausts. It's depth-faded so it reads as a solid car. Settings let you choose 5-spoke or stock 10-spoke wheels, and a lowered stance with lip, side skirts and raised ducktail. The car sits on a grid that streams by at road speed. Wheels spin at road speed and the front wheels steer. Tail lights light under braking and headlights follow the light switch. Callouts on each wheel show tyre pressure (and wheel speed when available). Camera modes: Auto (orbit), Orbit (drag), Chase, 3/4, Side, Top. On wide screens, six shortcut tiles sit beside the car; you choose which on the Style page. |
-| **Body** | Doors, locks, belt, lights, park brake, reverse, brake lights, fuel, odometer and all four tyres, next to the car. |
+| **Body** | **Body systems**, laid out like the reel. Fifteen state tiles: driver and passenger doors, trunk, locks, headlights, turn/hazard, wipers, seatbelt, park brake, brake lights, reverse, engine, VDC, track mode and cruise. Each tile shows its CAN id; active states light in their group colour (body, lights, safety, drivetrain) and anything needing attention lights red. Below that: tyres and vehicle (odometer, estimated range, fuel, average and current economy, brake pressure); this drive (time, moving time, distance, average and top speed, max rpm, max lateral g, hardest stop, fuel used, downshifts); chassis and wheels (wheel speeds, rear slip, slip angle β, yaw rate, lateral g, steering, counter-steer, engine-to-wheel ratio); and the bus (link, messages/s, bus load, CAN ids, signals, and a log of recent events). |
 | **Handling** | G-force radar with trail and peak ring. Peak lateral/brake/accel g, best and last 0–60 (or 0–100 km/h), top speed, distance. Tap the radar to reset the session. |
 | **Diff** | All four wheel speeds, the rear left–right split against what the yaw rate expects, rear-vs-front slip, and whether the Torsen LSD is biasing. Needs wheel speeds (id 0x13A), which come from the DCM connector, not the ASC; the page says so if they're missing. |
 | **Shift** | The last 10 s of revs with every gear change marked. Each change gets a **rev-match score**: how close the engine speed was to what the new gear needs when the clutch came out. Ratings: PERFECT 90+, CLEAN 75+, GOOD 55+, ROUGH 30+, MISSED. It also counts your **heel-toe** downshifts, **throttle blips** and **double-clutches**. |
@@ -71,7 +72,7 @@ The pages are tabs along the bottom (two rows on a phone held upright). On the c
 | **Bus** | Live CAN traffic: every ID, its rate and its bytes, with changing bytes lit. |
 | **Style** | Theme presets (Akasaka, Gazoo, WR Blue, Cyberpunk, Midnight, Matrix, Sunset, Ice, Daylight) with a live preview. Colour pickers for the primary, secondary and car-line colours. Buttons to play each animation. The six Drive-page tiles. |
 
-Nothing is faked. A signal the car doesn't send (or that isn't in the CAN profile yet) shows as NOT MAPPED. On the GR86, door locks, belt, headlights, odometer, VDC, cruise and park brake have no publicly documented IDs yet. Find them with the **CAN sniffer** and add them to the profile, and they light up everywhere. **Demo** mode simulates all of them, so you can see every feature without a car.
+Nothing is faked. A signal the car doesn't send (or that isn't in the CAN profile yet) shows as NOT MAPPED. On the GR86, doors, trunk, locks, belt, headlights, turn signals, wipers, odometer, VDC, track mode, cruise and park brake have no publicly documented IDs yet. Range is an estimate from fuel left and this drive's economy (or the car's rated economy until there's enough data). Fuel used comes from mass airflow when the car reports it (OBD), otherwise from the fuel level dropping; the instant economy figure needs mass airflow. Find them with the **CAN sniffer** and add them to the profile, and they light up everywhere. **Demo** mode simulates all of them, so you can see every feature without a car.
 
 ## Connecting to a GR86 / BRZ
 

@@ -34,6 +34,10 @@ object Analytics {
     @Volatile var yawExpected: Float? = null; private set
     @Volatile var balance = 0f; private set          // deg/s; + oversteer, - understeer
     @Volatile var oversteerTimeS = 0f; private set
+    /** Body slip angle estimate (deg, + nose pointing left of travel); needs a CAN yaw rate. */
+    @Volatile var slipAngle: Float? = null; private set
+    /** Steering is wound against the way the car is rotating. */
+    @Volatile var counterSteer = false; private set
     val balanceHistory = FloatArray(200) { Float.NaN } // last 10 s at 20 Hz
     @Volatile var balanceHead = 0; private set
 
@@ -173,11 +177,19 @@ object Analytics {
         val a = yawActual
         val e = yawExpected
         balance = if (a != null && e != null && v > 5f) {
-            // positive when the car rotates more than asked (oversteer), negative when less
-            val sign = if (abs(e) > 0.5f) kotlin.math.sign(e) else kotlin.math.sign(a)
-            (abs(a) - abs(e)) * if (sign == kotlin.math.sign(a) || abs(a) < 0.5f) 1f else -1f
+            // positive when the car rotates more than asked (oversteer), negative when less;
+            // rotating against the steering (a counter-steered slide) is all oversteer
+            if (abs(a) < 0.5f || abs(e) < 0.5f || kotlin.math.sign(a) == kotlin.math.sign(e)) abs(a) - abs(e)
+            else abs(a) + abs(e)
         } else 0f
         if (balance > 4f) oversteerTimeS += dt
+        // β' = ay / v - r. Only meaningful with a measured yaw rate; leaks back to 0 so drift can't build up.
+        slipAngle = if (yawCan != null && lat != null && v > 5f) {
+            val rate = (-lat * 9.81f / v) - yawCan * PI.toFloat() / 180f
+            val b = (slipAngle ?: 0f) * PI.toFloat() / 180f
+            ((b + rate * dt) * (1f - 0.5f * dt)).coerceIn(-0.8f, 0.8f) * 180f / PI.toFloat()
+        } else null
+        counterSteer = a != null && steer != null && v > 5f && abs(a) > 4f && abs(steer) > 8f && kotlin.math.sign(a) != kotlin.math.sign(steer)
         if (now - lastBalSample >= 50) {
             lastBalSample = now
             balanceHistory[balanceHead] = if (a != null && e != null && v > 5f) balance else Float.NaN

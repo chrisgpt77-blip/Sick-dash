@@ -29,6 +29,7 @@ object ShiftTracker {
     @Volatile var heelToeCount = 0; private set
     @Volatile var blipCount = 0; private set
     @Volatile var doubleClutchCount = 0; private set
+    @Volatile var downshiftCount = 0; private set
     private val recent = ArrayDeque<Shift>()
     private var lastGear = 0
     private var pendingGear = 0
@@ -44,7 +45,7 @@ object ShiftTracker {
 
     @Synchronized
     fun reset() {
-        last = null; count = 0; heelToeCount = 0; blipCount = 0; doubleClutchCount = 0
+        last = null; count = 0; heelToeCount = 0; blipCount = 0; doubleClutchCount = 0; downshiftCount = 0
         recent.clear(); lastGear = 0; pendingGear = 0; inWindow = false
     }
 
@@ -91,6 +92,7 @@ object ShiftTracker {
         val shift = Shift(lastGear, pendingGear, s.now, rpm, target, score, blip, heelToe, dc)
         last = shift
         count++
+        if (down) downshiftCount++
         if (blip) blipCount++
         if (heelToe) heelToeCount++
         if (dc) doubleClutchCount++

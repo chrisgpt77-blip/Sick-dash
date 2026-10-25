@@ -71,44 +71,6 @@ internal fun DashRenderer.centreAxis(c: Canvas, plot: RectF, lo: Float, hi: Floa
 }
 
 // =============================================================================================
-// BODY: the car's state
-// =============================================================================================
-
-internal fun DashRenderer.bodyPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, dt: Float) {
-    val body = pageFrame(c, r, "BODY · VEHICLE STATE", "DOORS · LOCKS · LIGHTS · TYRES")
-    val stage = RectF(body.left, body.top, body.left + body.width() * 0.56f, body.bottom)
-    val speedMs = (s[Channel.SPEED] ?: 0f) / 3.6f
-    wheelSpin -= speedMs / CarWireframe.WHEEL_R * dt
-    roadOffset = (roadOffset + speedMs * dt) % DashRenderer.GRID
-    drawCar(c, stage, s, cfg, live = s[Channel.RPM] != null || s.link.state == LinkState.CONNECTED, callouts = true)
-
-    val list = RectF(stage.right + 8f * u, body.top, body.right, body.bottom)
-    val items = listOf(Channel.DOORS_OPEN, Channel.DOOR_LOCK, Channel.BELT, Channel.HEADLIGHTS, Channel.PARK_BRAKE,
-        Channel.REVERSE, Channel.BRAKE_LIGHT, Channel.FUEL, Channel.ODOMETER)
-    val tyreH = list.height() * 0.28f
-    val rowH = (list.height() - tyreH - 6f * u) / items.size
-    for ((i, ch) in items.withIndex()) {
-        val b = RectF(list.left, list.top + i * rowH, list.right, list.top + (i + 1) * rowH - 2f * u)
-        val v = s[ch, if (ch == Channel.ODOMETER) Long.MAX_VALUE else 10_000]
-        val warn = v != null && ChannelInfo.needsCheck(ch, v, s)
-        val ts = min(7.5f * u, b.height() * 0.42f)
-        label(c, ChannelInfo.of(ch)?.name ?: ch.key.uppercase(), b.left + 4f * u, b.centerY() + ts * 0.36f, ts, t.dim)
-        display(c, v?.let { ChannelInfo.format(ch, it, cfg.imperial) } ?: "NOT MAPPED", b.right - 4f * u, b.centerY() + ts * 0.4f,
-            if (v == null) ts else min(b.height() * 0.55f, 11f * u), if (v == null) t.faint else if (warn) t.secondary else t.text, Paint.Align.RIGHT, glow = v != null)
-        stroke.color = t.line; stroke.strokeWidth = max(1f, 0.6f * u)
-        c.drawLine(b.left, b.bottom + 1f * u, b.right, b.bottom + 1f * u, stroke)
-    }
-    val tyres = RectF(list.left, list.bottom - tyreH, list.right, list.bottom)
-    for ((i, b) in cells(tyres, 4, 2, 4f * u).withIndex()) {
-        val ch = listOf(Channel.TIRE_FL, Channel.TIRE_FR, Channel.TIRE_RL, Channel.TIRE_RR)[i]
-        val v = s[ch, 15_000]
-        statCell(c, b, listOf("TYRE FL", "TYRE FR", "TYRE RL", "TYRE RR")[i],
-            v?.let { if (cfg.imperial) (it / 6.8948f).roundToInt().toString() else "%.1f".format(it / 100f) },
-            if (cfg.imperial) "PSI" else "BAR", if (v != null && v < 193f) t.secondary else t.text)
-    }
-}
-
-// =============================================================================================
 // DIFF: wheel speeds and the limited-slip diff at work
 // =============================================================================================
 

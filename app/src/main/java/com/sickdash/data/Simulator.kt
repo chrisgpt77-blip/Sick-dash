@@ -100,7 +100,7 @@ object Simulator {
             coolant = min(92f, coolant + dt * 0.4f)
             oil = min(104f, oil + dt * 0.25f)
 
-            val steer = latG * 140f
+            val steer = -latG * 140f   // a right turn (lat +) is steering right (−)
             val v = speed / 3.6f
             // yaw from the corner, with a touch of oversteer on the exit
             val yaw = if (v > 3f) -latG * 9.81f / v * 57.3f * (1f + if (phase == 2 && phaseTime > 2.5f) 0.25f else 0f) else 0f
@@ -137,6 +137,11 @@ object Simulator {
             put(Channel.TIRE_RR, 35f * 6.8948f)
             put(Channel.DOOR_LOCK, if (speed > 15f || phase != 3) 1f else 0f)
             put(Channel.DOORS_OPEN, 0f)
+            put(Channel.DOOR_DRIVER, 0f)
+            put(Channel.DOOR_PASS, 0f)
+            put(Channel.HATCH, 0f)
+            put(Channel.TURN_SIGNAL, if (phase == 2 && phaseTime < 1.2f && (t * 2.5f).toInt() % 2 == 0) 2f else 0f)
+            put(Channel.WIPERS, 0f)
             put(Channel.BELT, 1f)
             put(Channel.HEADLIGHTS, 2f)
             put(Channel.PARK_BRAKE, 0f)

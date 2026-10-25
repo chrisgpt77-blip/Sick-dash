@@ -185,5 +185,7 @@ class DashScreenshotTest {
         shot("diff_1280x720", 1280, 720, DashRenderer.Page.DIFF, sim = 60)
         shot("timers_1280x720", 1280, 720, DashRenderer.Page.TIMERS, sim = 300)
         shot("demo_drive_1280x720", 1280, 720, DashRenderer.Page.DRIVE, sim = 200)
+        shot("body_demo_1280x720", 1280, 720, DashRenderer.Page.BODY, sim = 260)
+        shot("body_demo_800x480", 800, 480, DashRenderer.Page.BODY, sim = 40)
     }
 }

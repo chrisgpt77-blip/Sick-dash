@@ -38,6 +38,9 @@ enum class CarPreset(
     val atRatios: String,
     val atFinal: String,
     val tire: String,
+    /** Fuel tank (litres) and rated combined economy (L/100 km), for the range estimate. */
+    val tankL: Float = 50f,
+    val ratedL100: Float = 9.4f,
 ) {
     GR86(
         "gr86", "Toyota GR86 (2022–2026)", "GR86", "ZN8", "FA24D", GEN2_PROFILE, "akasaka",
@@ -52,7 +55,7 @@ enum class CarPreset(
     Z370(
         "370z", "Nissan 370Z (2009–2020)", "370Z", "Z34", "VQ37VHR", "profiles/nissan_370z.json", "akasaka",
         7500, 7000, 8000, "3.794,2.324,1.624,1.271,1.000,0.794", "3.692",
-        "4.923,3.193,2.042,1.411,1.000,0.862,0.771", "3.357", "275/35R19",
+        "4.923,3.193,2.042,1.411,1.000,0.862,0.771", "3.357", "275/35R19", tankL = 72f, ratedL100 = 11.2f,
     );
 
     companion object {

@@ -42,6 +42,11 @@ object ChannelInfo {
         Info(Channel.PARK_BRAKE, "PARK BRAKE", Group.CHASSIS),
         Info(Channel.CRUISE, "CRUISE", Group.CHASSIS),
         Info(Channel.DOORS_OPEN, "DOORS", Group.BODY),
+        Info(Channel.DOOR_DRIVER, "DOOR DRIVER", Group.BODY),
+        Info(Channel.DOOR_PASS, "DOOR PASS", Group.BODY),
+        Info(Channel.HATCH, "TRUNK", Group.BODY),
+        Info(Channel.TURN_SIGNAL, "TURN / HAZARD", Group.BODY),
+        Info(Channel.WIPERS, "WIPERS", Group.BODY),
         Info(Channel.DOOR_LOCK, "LOCKS", Group.BODY),
         Info(Channel.BELT, "BELT", Group.BODY),
         Info(Channel.HEADLIGHTS, "LIGHTS", Group.BODY),
@@ -80,7 +85,10 @@ object ChannelInfo {
             Channel.LAMBDA -> "%.3f λ".format(v)
             Channel.ODOMETER -> if (imperial) "%,d MI".format((v * 0.621371f).roundToInt()) else "%,d KM".format(v.roundToInt())
             Channel.DOOR_LOCK -> if (v >= 0.5f) "LOCKED" else "UNLOCKED"
-            Channel.DOORS_OPEN -> if (v >= 0.5f) "OPEN" else "CLOSED"
+            Channel.DOORS_OPEN, Channel.DOOR_DRIVER, Channel.DOOR_PASS -> if (v >= 0.5f) "OPEN" else "CLOSED"
+            Channel.HATCH -> if (v >= 0.5f) "OPEN" else "SHUT"
+            Channel.TURN_SIGNAL -> when (v.roundToInt()) { 0 -> "OFF"; 1 -> "LEFT"; 2 -> "RIGHT"; else -> "HAZARD" }
+            Channel.WIPERS -> when (v.roundToInt()) { 0 -> "OFF"; 1 -> "INT"; 2 -> "LOW"; else -> "HIGH" }
             Channel.BELT -> if (v >= 0.5f) "BUCKLED" else "OPEN"
             Channel.HEADLIGHTS -> when (v.roundToInt()) { 0 -> "OFF"; 1 -> "PARKING"; 2 -> "LOW"; else -> "HIGH" }
             Channel.VDC_OFF -> if (v >= 0.5f) "OFF" else "ON"
@@ -96,7 +104,7 @@ object ChannelInfo {
         Channel.FUEL -> v < 15f
         Channel.BATTERY -> v < 12.0f || v > 15.2f
         Channel.BELT -> v < 0.5f
-        Channel.DOORS_OPEN -> v >= 0.5f
+        Channel.DOORS_OPEN, Channel.DOOR_DRIVER, Channel.DOOR_PASS, Channel.HATCH -> v >= 0.5f
         Channel.PARK_BRAKE -> v >= 0.5f && (s[Channel.SPEED] ?: 0f) > 3f
         Channel.TIRE_FL, Channel.TIRE_FR, Channel.TIRE_RL, Channel.TIRE_RR -> v < 193f
         else -> false

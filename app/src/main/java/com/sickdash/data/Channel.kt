@@ -3,7 +3,8 @@ package com.sickdash.data
 /**
  * Every value the dash can show. Internal units: km/h, °C, %, volts, degrees, deg/s, g, kPa
  * (tyres), g/s (MAF), km (odometer). On/off states are 0 or 1 (headlights: 0 off, 1 parking,
- * 2 low, 3 high).
+ * 2 low, 3 high; turn signals: 0 off, 1 left, 2 right, 3 hazard; wipers: 0 off, 1 intermittent,
+ * 2 low, 3 high). Steering and yaw are positive to the left; lateral g is positive in a right turn.
  */
 enum class Channel(val key: String) {
     RPM("rpm"),
@@ -34,6 +35,11 @@ enum class Channel(val key: String) {
     BRAKE_LIGHT("brake_light"),
     DOOR_LOCK("door_lock"),
     DOORS_OPEN("doors_open"),
+    DOOR_DRIVER("door_driver"),
+    DOOR_PASS("door_pass"),
+    HATCH("hatch"),
+    TURN_SIGNAL("turn_signal"),
+    WIPERS("wipers"),
     BELT("belt"),
     HEADLIGHTS("headlights"),
     PARK_BRAKE("park_brake"),
