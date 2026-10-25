@@ -7,36 +7,254 @@
     "Decodes from github.com/timurrrr/ft86 (can_bus/gen2.md) and RaceChronoDiyBleDevice.",
     "Byte signals: start (byte 0 = first), length, endian, signed. Bit signals: bit + bits, read",
     "little-endian like RaceChrono's bitsToUIntLe(raw, bit, bits). value = raw * scale + offset,",
-    "then clamped to min/max. rawMax drops 'not available' values. \"disabled\": true switches one off."
+    "then clamped to min/max. rawMax drops 'not available' values. \"disabled\": true switches one off.",
+    "\"nodes\" groups ids by module for the boot-time CAN node check."
   ],
   "signals": [
-    { "channel": "rpm", "id": "0x40", "bit": 16, "bits": 14,
-      "note": "100 Hz. bitsToUIntLe(raw, 16, 14)" },
-    { "channel": "throttle", "id": "0x40", "start": 4, "length": 1, "scale": 0.392157,
-      "note": "Accelerator pedal, E / 2.55" },
-    { "channel": "speed", "id": "0x139", "bit": 16, "bits": 13, "scale": 0.015694,
-      "note": "50 Hz, km/h. Check against GPS if you run non-stock tyre sizes" },
-    { "channel": "brake", "id": "0x139", "start": 5, "length": 1, "scale": 1.428571, "max": 100,
-      "note": "Brake pressure as %, min(F / 0.7, 100)" },
-    { "channel": "steering", "id": "0x138", "start": 2, "length": 2, "endian": "little", "signed": true, "scale": -0.1,
-      "note": "Degrees, positive = left" },
-    { "channel": "gear", "id": "0x241", "bit": 35, "bits": 3,
-      "note": "6MT: 0 = N, 1-6. Delete this entry on the 6AT (gear is then estimated from rpm/speed)" },
-    { "channel": "clutch", "id": "0x241", "start": 5, "length": 1, "shift": 7, "mask": 1, "scale": 100,
-      "note": "100 = pedal down" },
-    { "channel": "oil_temp", "id": "0x345", "start": 3, "length": 1, "offset": -40, "note": "D - 40" },
-    { "channel": "coolant", "id": "0x345", "start": 4, "length": 1, "offset": -40, "note": "E - 40" },
-    { "channel": "intake_temp", "id": "0x390", "start": 4, "length": 1, "scale": 0.5, "offset": -40,
-      "note": "Air temperature, E / 2 - 40" },
-    { "channel": "fuel", "id": "0x393", "bit": 32, "bits": 10, "scale": -0.097752, "offset": 100, "min": 0, "max": 100,
-      "note": "Unfiltered, work in progress upstream" },
-    { "channel": "tire_fl", "id": "0x6E2", "start": 3, "length": 1, "shift": 1, "rawMax": 126, "scale": 6.8948,
-      "note": "US cars (cluster in psi): (D >> 1) psi -> kPa. For bar clusters use scale 10" },
-    { "channel": "tire_fr", "id": "0x6E2", "start": 4, "length": 1, "shift": 1, "rawMax": 126, "scale": 6.8948 },
-    { "channel": "tire_rl", "id": "0x6E2", "start": 5, "length": 1, "shift": 1, "rawMax": 126, "scale": 6.8948 },
-    { "channel": "tire_rr", "id": "0x6E2", "start": 6, "length": 1, "shift": 1, "rawMax": 126, "scale": 6.8948 },
-    { "channel": "lat_g", "id": "0x13B", "start": 6, "length": 1, "signed": true, "scale": 0.2, "disabled": true,
-      "note": "Coarse/noisy upstream; the phone's sensors are smoother. Enable to use the car's" },
-    { "channel": "lon_g", "id": "0x13B", "start": 7, "length": 1, "signed": true, "scale": -0.1, "disabled": true }
-  ]
+    {
+      "channel": "rpm",
+      "id": "0x40",
+      "bit": 16,
+      "bits": 14,
+      "note": "100 Hz. bitsToUIntLe(raw, 16, 14)"
+    },
+    {
+      "channel": "throttle",
+      "id": "0x40",
+      "start": 4,
+      "length": 1,
+      "scale": 0.392157,
+      "note": "Accelerator pedal, E / 2.55"
+    },
+    {
+      "channel": "speed",
+      "id": "0x139",
+      "bit": 16,
+      "bits": 13,
+      "scale": 0.015694,
+      "note": "50 Hz, km/h. Check against GPS if you run non-stock tyre sizes"
+    },
+    {
+      "channel": "brake",
+      "id": "0x139",
+      "start": 5,
+      "length": 1,
+      "scale": 1.428571,
+      "max": 100,
+      "note": "Brake pressure as %, min(F / 0.7, 100)"
+    },
+    {
+      "channel": "steering",
+      "id": "0x138",
+      "start": 2,
+      "length": 2,
+      "endian": "little",
+      "signed": true,
+      "scale": -0.1,
+      "note": "Degrees, positive = left"
+    },
+    {
+      "channel": "yaw_rate",
+      "id": "0x138",
+      "start": 4,
+      "length": 2,
+      "endian": "little",
+      "signed": true,
+      "scale": -0.2725,
+      "note": "deg/s, positive = turning left"
+    },
+    {
+      "channel": "gear",
+      "id": "0x241",
+      "bit": 35,
+      "bits": 3,
+      "note": "6MT: 0 = N, 1-6. Delete this entry on the 6AT (gear is then estimated from rpm/speed)"
+    },
+    {
+      "channel": "clutch",
+      "id": "0x241",
+      "start": 5,
+      "length": 1,
+      "shift": 7,
+      "mask": 1,
+      "scale": 100,
+      "note": "100 = pedal down"
+    },
+    {
+      "channel": "oil_temp",
+      "id": "0x345",
+      "start": 3,
+      "length": 1,
+      "offset": -40,
+      "note": "D - 40"
+    },
+    {
+      "channel": "coolant",
+      "id": "0x345",
+      "start": 4,
+      "length": 1,
+      "offset": -40,
+      "note": "E - 40"
+    },
+    {
+      "channel": "intake_temp",
+      "id": "0x390",
+      "start": 4,
+      "length": 1,
+      "scale": 0.5,
+      "offset": -40,
+      "note": "Air temperature, E / 2 - 40"
+    },
+    {
+      "channel": "fuel",
+      "id": "0x393",
+      "bit": 32,
+      "bits": 10,
+      "scale": -0.097752,
+      "offset": 100,
+      "min": 0,
+      "max": 100,
+      "note": "Unfiltered, work in progress upstream"
+    },
+    {
+      "channel": "tire_fl",
+      "id": "0x6E2",
+      "start": 3,
+      "length": 1,
+      "shift": 1,
+      "rawMax": 126,
+      "scale": 6.8948,
+      "note": "US cars (cluster in psi): (D >> 1) psi -> kPa. For bar clusters use scale 10"
+    },
+    {
+      "channel": "tire_fr",
+      "id": "0x6E2",
+      "start": 4,
+      "length": 1,
+      "shift": 1,
+      "rawMax": 126,
+      "scale": 6.8948
+    },
+    {
+      "channel": "tire_rl",
+      "id": "0x6E2",
+      "start": 5,
+      "length": 1,
+      "shift": 1,
+      "rawMax": 126,
+      "scale": 6.8948
+    },
+    {
+      "channel": "tire_rr",
+      "id": "0x6E2",
+      "start": 6,
+      "length": 1,
+      "shift": 1,
+      "rawMax": 126,
+      "scale": 6.8948
+    },
+    {
+      "channel": "lat_g",
+      "id": "0x13B",
+      "start": 6,
+      "length": 1,
+      "signed": true,
+      "scale": 0.2,
+      "disabled": true,
+      "note": "Coarse/noisy upstream; the phone's sensors are smoother. Enable to use the car's"
+    },
+    {
+      "channel": "lon_g",
+      "id": "0x13B",
+      "start": 7,
+      "length": 1,
+      "signed": true,
+      "scale": -0.1,
+      "disabled": true
+    },
+    {
+      "channel": "wheel_fl",
+      "id": "0x13A",
+      "bit": 12,
+      "bits": 13,
+      "scale": 0.015694,
+      "note": "DCM connector only (not on the ASC bus)"
+    },
+    {
+      "channel": "wheel_fr",
+      "id": "0x13A",
+      "bit": 25,
+      "bits": 13,
+      "scale": 0.015694
+    },
+    {
+      "channel": "wheel_rl",
+      "id": "0x13A",
+      "bit": 38,
+      "bits": 13,
+      "scale": 0.015694
+    },
+    {
+      "channel": "wheel_rr",
+      "id": "0x13A",
+      "bit": 51,
+      "bits": 13,
+      "scale": 0.015694
+    },
+    {
+      "channel": "brake_light",
+      "id": "0x139",
+      "start": 4,
+      "length": 1,
+      "shift": 2,
+      "mask": 1,
+      "note": "Brake light switch, E & 0x4"
+    },
+    {
+      "channel": "neutral",
+      "id": "0x40",
+      "start": 3,
+      "length": 1,
+      "shift": 7,
+      "mask": 1,
+      "note": "1 in neutral, MT and AT"
+    },
+    {
+      "channel": "reverse",
+      "id": "0x228",
+      "start": 2,
+      "length": 1,
+      "mask": 1,
+      "note": "1 in reverse, MT and AT"
+    }
+  ],
+  "nodes": {
+    "ECM": [
+      "0x40",
+      "0x41",
+      "0x345",
+      "0x390",
+      "0x393"
+    ],
+    "ABS·VDC": [
+      "0x139",
+      "0x13A",
+      "0x13B",
+      "0x13C"
+    ],
+    "STEERING": [
+      "0x138"
+    ],
+    "TCM": [
+      "0x241",
+      "0x48"
+    ],
+    "BODY": [
+      "0x228",
+      "0x6E1"
+    ],
+    "METER": [
+      "0x6E2"
+    ]
+  }
 }

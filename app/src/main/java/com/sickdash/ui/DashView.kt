@@ -10,12 +10,21 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.preference.PreferenceManager
 import com.sickdash.data.DashConfig
+import com.sickdash.data.Recorder
 import com.sickdash.data.VehicleData
 
 /** Phone-screen host for [DashRenderer]; redraws every vsync, taps hit the HUD's tabs, drags orbit the car. */
 class DashView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
     val renderer = DashRenderer(context.assets).apply {
-        onThemePicked = { key -> PreferenceManager.getDefaultSharedPreferences(context).edit().putString("theme", key).apply() }
+        onSetting = { key, value ->
+            PreferenceManager.getDefaultSharedPreferences(context).edit().apply {
+                if (value == null) remove(key) else putString(key, value)
+            }.apply()
+        }
+    }
+
+    init {
+        Recorder.init(context)
     }
     private val area = RectF()
 

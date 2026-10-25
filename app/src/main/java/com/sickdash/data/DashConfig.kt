@@ -85,6 +85,12 @@ data class DashConfig(
     val fiveSpoke: Boolean = true,
     /** Wireframe: lowered, with lip splitter, side skirts and raised ducktail. */
     val bodyKit: Boolean = true,
+    /** Colour-picker overrides on top of the theme (ARGB), or null for the theme's own. */
+    val colorPrimary: Int? = null,
+    val colorSecondary: Int? = null,
+    val colorCar: Int? = null,
+    /** The six shortcut tiles on the Drive page, in order. */
+    val tiles: List<String> = DEFAULT_TILES,
 ) {
     /** "FA24D · 6MT" under the wordmark. */
     val subtitle: String get() = "${car.engine} · ${gearRatios.size}${if (automatic) "AT" else "MT"}"
@@ -139,6 +145,11 @@ data class DashConfig(
                 automatic = automatic,
                 fiveSpoke = p.getString("wheels", "5spoke") == "5spoke",
                 bodyKit = p.getBoolean("body_kit", true),
+                colorPrimary = colour(p.getString("color_primary", null)),
+                colorSecondary = colour(p.getString("color_secondary", null)),
+                colorCar = colour(p.getString("color_car", null)),
+                tiles = p.getString("dash_tiles", null)?.split(',')?.filter { it in TILE_KINDS }?.take(6)
+                    ?.let { if (it.size == 6) it else null } ?: DEFAULT_TILES,
             )
         }
 
@@ -153,6 +164,14 @@ data class DashConfig(
                 .putString("final_drive", if (automatic) car.atFinal else car.mtFinal)
                 .putString("tire_size", car.tire)
                 .apply()
+        }
+
+        /** Shortcut tiles available for the Drive page. */
+        val TILE_KINDS = listOf("vehicle", "timers", "clutch", "dyno", "vdc", "shift", "diff", "tyres", "fuel", "engine", "throttle", "systems")
+        val DEFAULT_TILES = listOf("vehicle", "timers", "clutch", "dyno", "vdc", "shift")
+
+        private fun colour(s: String?): Int? = s?.takeIf { it.isNotBlank() }?.let {
+            runCatching { android.graphics.Color.parseColor(it) }.getOrNull()
         }
 
         const val DEFAULT_RATIOS = "3.626,2.189,1.541,1.213,1.000,0.767"

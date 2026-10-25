@@ -14,13 +14,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.preference.PreferenceManager
 import com.sickdash.data.DashConfig
+import com.sickdash.data.Recorder
 import com.sickdash.data.VehicleData
 import com.sickdash.ui.DashRenderer
 
 /** Draws the dashboard onto the Android Auto "map" surface at ~30 fps. */
 class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) : DefaultLifecycleObserver {
     val dash = DashRenderer(carContext.assets).apply {
-        onThemePicked = { key -> PreferenceManager.getDefaultSharedPreferences(carContext).edit().putString("theme", key).apply() }
+        onSetting = { key, value ->
+            PreferenceManager.getDefaultSharedPreferences(carContext).edit().apply {
+                if (value == null) remove(key) else putString(key, value)
+            }.apply()
+        }
     }
 
     /** Called after a tap changed something the action strip shows. */
@@ -73,6 +78,7 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
     }
 
     init {
+        Recorder.init(carContext)
         lifecycle.addObserver(this)
     }
 

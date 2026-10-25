@@ -18,12 +18,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.sickdash.data.CarPreset
 import com.sickdash.data.DashConfig
+import com.sickdash.data.Recorder
 import com.sickdash.data.Source
 import com.sickdash.service.ConnectionManager
 import com.sickdash.ui.Theme
@@ -69,6 +71,7 @@ class SettingsActivity : AppCompatActivity() {
             findPreference<Preference>("open_sniffer")?.setOnPreferenceClickListener {
                 startActivity(Intent(requireContext(), SnifferActivity::class.java)); true
             }
+            findPreference<Preference>("share_log")?.setOnPreferenceClickListener { shareLatestLog(); true }
             updateVisibility()
         }
 
@@ -97,6 +100,23 @@ class SettingsActivity : AppCompatActivity() {
             pref.entries = names.toTypedArray()
             pref.entryValues = addresses.toTypedArray()
             pref.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
+
+        private fun shareLatestLog() {
+            val ctx = requireContext()
+            Recorder.init(ctx)
+            val f = Recorder.latest()
+            if (f == null) {
+                Toast.makeText(ctx, "No drive logs yet. Tap RECORD on the Timers page.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.logs", f)
+            val send = Intent(Intent.ACTION_SEND)
+                .setType("text/csv")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_SUBJECT, f.name)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(send, "Share ${f.name}"))
         }
 
         private fun updateVisibility() {

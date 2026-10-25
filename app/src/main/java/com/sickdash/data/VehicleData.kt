@@ -44,10 +44,26 @@ object VehicleData {
     private val values = FloatArray(Channel.entries.size)
     private val stamps = LongArray(Channel.entries.size)
 
+    /** Where each channel last came from: [SRC_CAN] + CAN id, [SRC_OBD] + PID, phone, demo or derived. */
+    val sourceKind = IntArray(Channel.entries.size)
+    val sourceId = IntArray(Channel.entries.size)
+
+    /** Total updates per channel, for the Systems page's update rates. */
+    val updates = LongArray(Channel.entries.size)
+
+    const val SRC_CAN = 1
+    const val SRC_OBD = 2
+    const val SRC_PHONE = 3
+    const val SRC_DEMO = 4
+    const val SRC_DERIVED = 5
+
     private val _status = MutableStateFlow(LinkStatus(LinkState.IDLE, "Not connected"))
     val status: StateFlow<LinkStatus> = _status
 
     val sniffer = ConcurrentHashMap<Int, SniffEntry>()
+
+    /** Which module sends which CAN ids (from the CAN profile), for the boot-time node check. */
+    @Volatile var nodes: Map<String, List<Int>> = emptyMap()
 
     /** What the live link turned out to be: "CAN", "OBD", "DEMO" or "ELM" while it is still deciding. */
     @Volatile var linkMode = "—"
@@ -56,17 +72,32 @@ object VehicleData {
     @Volatile private var fps = 0
     @Volatile private var fpsWindowStart = 0L
 
-    fun set(c: Channel, value: Float, now: Long = System.currentTimeMillis()) {
+    fun set(c: Channel, value: Float, now: Long = System.currentTimeMillis(), kind: Int = 0, id: Int = 0) {
         if (value.isNaN() || value.isInfinite()) return
         synchronized(lock) {
             values[c.ordinal] = value
             stamps[c.ordinal] = now
+            updates[c.ordinal]++
+            if (kind != 0) { sourceKind[c.ordinal] = kind; sourceId[c.ordinal] = id }
         }
+    }
+
+    /** Human-readable source of a channel, e.g. "CAN 0x40" or "OBD 0C". */
+    fun sourceOf(c: Channel): String = when (sourceKind[c.ordinal]) {
+        SRC_CAN -> "CAN 0x%X".format(sourceId[c.ordinal])
+        SRC_OBD -> "OBD %02X".format(sourceId[c.ordinal])
+        SRC_PHONE -> "PHONE IMU"
+        SRC_DEMO -> "DEMO"
+        SRC_DERIVED -> "DERIVED"
+        else -> "—"
     }
 
     fun clear(c: Channel) = synchronized(lock) { stamps[c.ordinal] = 0L }
 
-    fun clearAll() = synchronized(lock) { stamps.fill(0L) }
+    fun clearAll() = synchronized(lock) {
+        stamps.fill(0L)
+        sourceKind.fill(0)
+    }
 
     fun setStatus(state: LinkState, message: String) {
         _status.value = LinkStatus(state, message)

@@ -120,7 +120,7 @@ class Elm327Session(
                 val bytes = ObdPid.parseReply(reply, p.pid, p.bytes)
                 if (bytes != null) {
                     misses.remove(p)
-                    VehicleData.set(p.channel, p.decode(bytes))
+                    VehicleData.set(p.channel, p.decode(bytes), kind = VehicleData.SRC_OBD, id = p.pid)
                     VehicleData.countFrame()
                 } else if (reply.any { it.contains("NO DATA") }) {
                     val m = (misses[p] ?: 0) + 1
@@ -185,7 +185,7 @@ class Elm327Session(
                     VehicleData.setStatus(LinkState.CONNECTED, "$name · raw CAN · ${transport.label}")
                 }
                 VehicleData.onFrame(frame)
-                profile.decode(frame) { c, v -> VehicleData.set(c, v) }
+                profile.decode(frame) { c, v -> VehicleData.set(c, v, kind = VehicleData.SRC_CAN, id = frame.id) }
             }
             stopMonitor()
         }
@@ -239,7 +239,7 @@ class SlcanSession(
             }
             silentFor = 0
             VehicleData.onFrame(frame)
-            profile.decode(frame) { c, v -> VehicleData.set(c, v) }
+            profile.decode(frame) { c, v -> VehicleData.set(c, v, kind = VehicleData.SRC_CAN, id = frame.id) }
         }
         runCatching { send("C") }
     }

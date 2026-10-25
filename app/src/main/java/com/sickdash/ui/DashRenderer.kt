@@ -38,7 +38,9 @@ import kotlin.math.sqrt
  */
 class DashRenderer(assets: AssetManager) {
     enum class Page(val title: String) {
-        DRIVE("Drive"), SHIFT("Shift"), ENGINE("Engine"), HANDLING("Handling"), BUS("Bus"), STYLE("Style")
+        DRIVE("Drive"), BODY("Body"), HANDLING("Handling"), DIFF("Diff"), SHIFT("Shift"), CLUTCH("Clutch"),
+        THROTTLE("Throttle"), ENGINE("Engine"), DYNO("Dyno"), VDC("VDC"), TIMERS("Timers"), SYSTEMS("Systems"),
+        BUS("Bus"), STYLE("Style"),
     }
 
     enum class Cam(val title: String) { AUTO("Auto"), ORBIT("Orbit"), CHASE("Chase"), QUARTER("3/4"), SIDE("Side"), TOP("Top") }
@@ -46,14 +48,24 @@ class DashRenderer(assets: AssetManager) {
     @Volatile var page = Page.DRIVE
     @Volatile var cam = Cam.AUTO
 
-    /** Called when a theme is tapped on the Style page; the host saves it. */
-    var onThemePicked: ((String) -> Unit)? = null
+    /** Called when a setting is changed from the HUD (theme, colours, tiles); the host saves it. Null removes it. */
+    var onSetting: ((key: String, value: String?) -> Unit)? = null
+
+    /** The task switcher (page overview) is open. */
+    @Volatile var switcherOpen = false
+
+    /** Plays the full boot animation (also on start-up), or the shorter system check. */
+    fun playBoot(full: Boolean = true) { bootAt = 0L; bootFull = full; bootPending = true }
+
+    /** Shows the event pop-up for [kind] with sample text, for the Style page's animation previews. */
+    fun preview(kind: com.sickdash.data.Events.Kind) = com.sickdash.data.Events.emit(kind, previewTitle(kind), "PREVIEW", strong = true)
 
     fun nextPage() { page = Page.entries[(page.ordinal + 1) % Page.entries.size] }
 
     fun resetSession() {
         SessionStats.reset()
         ShiftTracker.reset()
+        com.sickdash.data.Analytics.reset()
         trailCount = 0
     }
 
@@ -65,7 +77,10 @@ class DashRenderer(assets: AssetManager) {
 
     /** Hit-test a tap against the tabs and buttons drawn last frame. */
     fun handleTap(x: Float, y: Float): Boolean {
-        for ((r, action) in hits) if (r.contains(x, y)) { action(); return true }
+        if (booting) { bootSkip = true; return true }
+        // later hits are drawn on top (overlays), so they win
+        for ((r, action) in hits.asReversed()) if (r.contains(x, y)) { action(); return true }
+        if (switcherOpen) { switcherOpen = false; return true }
         return false
     }
 
@@ -73,36 +88,47 @@ class DashRenderer(assets: AssetManager) {
         Fonts.init(assets)
     }
 
-    private var t = Theme.ALL[0]
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val text = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val rect = RectF()
-    private val path = Path()
-    private val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
-    private var u = 1f
-    private var newHits = ArrayList<Pair<RectF, () -> Unit>>()
-    @Volatile private var hits: List<Pair<RectF, () -> Unit>> = emptyList()
+    internal var t = Theme.ALL[0]
+    internal val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    internal val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    internal val text = Paint(Paint.ANTI_ALIAS_FLAG)
+    internal val rect = RectF()
+    internal val path = Path()
+    internal val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
+    internal var u = 1f
+    internal var newHits = ArrayList<Pair<RectF, () -> Unit>>()
+    @Volatile internal var hits: List<Pair<RectF, () -> Unit>> = emptyList()
 
-    private var rpmShown = 0f
-    private var speedShown = 0f
-    private var latShown = 0f
-    private var lonShown = 0f
-    private val trail = FloatArray(TRAIL * 2)
-    private var trailHead = 0
-    private var trailCount = 0
+    internal var rpmShown = 0f
+    internal var speedShown = 0f
+    internal var latShown = 0f
+    internal var lonShown = 0f
+    internal val trail = FloatArray(TRAIL * 2)
+    internal var trailHead = 0
+    internal var trailCount = 0
 
-    private var lastFrame = 0L
-    private var yaw = 0.7f
-    private var pitch = 0.3f
-    private var targetYaw = 0.7f
-    private var wheelSpin = 0f
-    private var roadOffset = 0f
+    internal var lastFrame = 0L
+    // boot animation state
+    internal var bootAt = 0L
+    internal var bootFull = true
+    internal var bootPending = true
+    internal var bootSkip = false
+    @Volatile internal var booting = false
+    internal var wasLive = false
+    internal var offlineSince = 0L
+    internal var lastLiveAt = 0L
+    internal var poweredOffDismissed = false
+    internal var linkLostAt = 0L
+    internal var yaw = 0.7f
+    internal var pitch = 0.3f
+    internal var targetYaw = 0.7f
+    internal var wheelSpin = 0f
+    internal var roadOffset = 0f
 
     // =========================================================================================
 
     fun draw(canvas: Canvas, area: RectF, s: Snapshot, cfg: DashConfig) {
-        t = Theme.of(cfg.themeKey)
+        t = Theme.of(cfg.themeKey).with(cfg.colorPrimary, cfg.colorSecondary, cfg.colorCar)
         val dt = if (lastFrame == 0L) 0.033f else ((s.now - lastFrame) / 1000f).coerceIn(0f, 0.2f)
         lastFrame = s.now
         newHits = ArrayList()
@@ -119,7 +145,10 @@ class DashRenderer(assets: AssetManager) {
         SessionStats.update(s, cfg.imperial)
         ShiftTracker.update(s, gear, cfg)
         History.update(s, gear)
+        com.sickdash.data.Analytics.update(s, cfg, gear)
+        com.sickdash.data.Recorder.sample(s)
         updateCamera(dt)
+        trackLink(s)
 
         val w = area.width()
         val h = area.height()
@@ -130,9 +159,11 @@ class DashRenderer(assets: AssetManager) {
         canvas.drawRect(area, fill)
         val pad = 8f * u
         val headerH = 26f * u
-        val tabsH = 26f * u
+        // fourteen tabs don't fit one row on a phone held upright: use two
+        val tabRows = if (w - 2 * pad < Page.entries.size * 44f * u) 2 else 1
+        val tabsH = 26f * u + (tabRows - 1) * 24f * u
         header(canvas, RectF(area.left + pad, area.top + pad * 0.5f, area.right - pad, area.top + headerH), s, cfg)
-        tabs(canvas, RectF(area.left + pad, area.bottom - tabsH - pad * 0.6f, area.right - pad, area.bottom - pad * 0.6f))
+        tabs(canvas, RectF(area.left + pad, area.bottom - tabsH - pad * 0.6f, area.right - pad, area.bottom - pad * 0.6f), tabRows)
 
         val top = area.top + headerH + pad
         val bottom = area.bottom - tabsH - pad * 1.4f
@@ -149,12 +180,24 @@ class DashRenderer(assets: AssetManager) {
         instrumentColumn(canvas, left, s, cfg, gear)
         when (page) {
             Page.DRIVE -> drivePage(canvas, main, s, cfg, dt)
-            Page.SHIFT -> shiftPage(canvas, main, s, cfg)
-            Page.ENGINE -> enginePage(canvas, main, s, cfg)
+            Page.BODY -> bodyPage(canvas, main, s, cfg, dt)
             Page.HANDLING -> handlingPage(canvas, main, s, cfg)
+            Page.DIFF -> diffPage(canvas, main, s, cfg)
+            Page.SHIFT -> shiftPage(canvas, main, s, cfg)
+            Page.CLUTCH -> clutchPage(canvas, main, s, cfg, gear)
+            Page.THROTTLE -> throttlePage(canvas, main, s, cfg)
+            Page.ENGINE -> enginePage(canvas, main, s, cfg)
+            Page.DYNO -> dynoPage(canvas, main, s, cfg)
+            Page.VDC -> vdcPage(canvas, main, s, cfg)
+            Page.TIMERS -> timersPage(canvas, main, s, cfg)
+            Page.SYSTEMS -> systemsPage(canvas, main, s, cfg)
             Page.BUS -> busPage(canvas, main, s)
-            Page.STYLE -> stylePage(canvas, main, cfg, dt)
+            Page.STYLE -> stylePage(canvas, main, s, cfg, dt)
         }
+        if (page != Page.STYLE) eventBanner(canvas, main, s)
+        if (switcherOpen) taskSwitcher(canvas, area, s, cfg)
+        poweredOff(canvas, area, s, cfg)
+        boot(canvas, area, s, cfg)
         hits = newHits
     }
 
@@ -162,23 +205,12 @@ class DashRenderer(assets: AssetManager) {
     // Header and tabs
     // =========================================================================================
 
-    private fun header(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
+    internal fun header(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         val y = r.centerY()
         display(c, cfg.car.wordmark, r.left, y + 6f * u, 17f * u, t.text, glow = true)
         val cw = textWidth(cfg.car.wordmark, Fonts.display, 17f * u, 0.04f)
         label(c, "${cfg.car.chassis} · SICK DASH", r.left + cw + 7f * u, y + 4f * u, 9f * u, t.dim, spacing = 0.28f)
 
-        val src = if (cfg.source == Source.DEMO) "DEMO" else VehicleData.linkMode
-        val fresh = Channel.entries.count { s[it, 2000] != null }
-        val chip = "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · $fresh SIGNALS"
-        val chipX = r.left + cw + 7f * u + textWidth("${cfg.car.chassis} · SICK DASH", Fonts.mono, 9f * u, 0.28f) + 12f * u
-        val chipW = textWidth(chip, Fonts.mono, 8f * u, 0.12f) + 12f * u
-        if (chipX + chipW < r.centerX() + 40f * u) {
-            rect.set(chipX, y - 7f * u, chipX + chipW, y + 7f * u)
-            fill.color = t.panel
-            c.drawRect(rect, fill)
-            label(c, chip, chipX + 6f * u, y + 3f * u, 8f * u, t.dim)
-        }
 
         // right: link state, gearbox, clock
         var x = r.right
@@ -198,19 +230,74 @@ class DashRenderer(assets: AssetManager) {
         x -= 16f * u
         val box = if (cfg.automatic) "${cfg.gearRatios.size}AT" else "${cfg.gearRatios.size}MT"
         display(c, box, x, y + 5f * u, 11f * u, t.dim, Paint.Align.RIGHT)
+        x -= textWidth(box, Fonts.display, 11f * u, 0.04f) + 12f * u
+        // body states, only when the car reports them
+        s[Channel.BELT, 10_000]?.let { b ->
+            val w = headerState(c, if (b >= 0.5f) "BELT ON" else "BELT OFF", x, y, if (b >= 0.5f) t.dim else t.secondary)
+            x -= w + 10f * u
+        }
+        s[Channel.DOOR_LOCK, 10_000]?.let { l ->
+            val w = headerState(c, if (l >= 0.5f) "LOCKED" else "UNLOCKED", x, y, t.text)
+            x -= w + 10f * u
+        }
+        if (com.sickdash.data.Recorder.recording) {
+            val on = (s.now / 500) % 2 == 0L
+            val w = headerState(c, "REC", x, y, t.primary)
+            if (on) { fill.color = t.primary; c.drawCircle(x - w - 6f * u, y + 1f * u, 3f * u, fill) }
+            x -= w + 18f * u
+        }
+        // the task switcher
+        val pw = textWidth("PAGES", Fonts.mono, 8f * u, 0.16f) + 22f * u
+        val pb = RectF(x - pw, y - 8f * u, x, y + 8f * u)
+        fill.color = if (switcherOpen) t.text else t.panel
+        c.drawRect(pb, fill)
+        stroke.color = t.line; stroke.strokeWidth = max(1f, 0.8f * u); c.drawRect(pb, stroke)
+        val ic = if (switcherOpen) t.bg else t.dim
+        fill.color = ic
+        for (i in 0 until 4) c.drawRect(pb.left + 5f * u + (i % 2) * 4f * u, y - 4f * u + (i / 2) * 4f * u,
+            pb.left + 8f * u + (i % 2) * 4f * u, y - 1f * u + (i / 2) * 4f * u, fill)
+        label(c, "PAGES", pb.left + 15f * u, y + 3f * u, 8f * u, ic)
+        newHits += pb to { switcherOpen = !switcherOpen }
+        x = pb.left - 10f * u
+
+        // the link chip fills what's left between the wordmark and the right-hand states
+        val src = if (cfg.source == Source.DEMO) "DEMO" else VehicleData.linkMode
+        val a = com.sickdash.data.Analytics
+        val chipX = r.left + cw + 7f * u + textWidth("${cfg.car.chassis} · SICK DASH", Fonts.mono, 9f * u, 0.28f) + 12f * u
+        val room = x - chipX
+        val chip = listOf(
+            "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · ${a.liveSignals} SIGNALS · ${a.verifiedSignals} VERIFIED",
+            "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · ${a.verifiedSignals}/${a.liveSignals} OK",
+            "■ $src · ${"%,d".format(s.framesPerSecond)}/S",
+        ).firstOrNull { textWidth(it, Fonts.mono, 8f * u, 0.16f) + 12f * u <= room }
+        if (chip != null) {
+            rect.set(chipX, y - 7f * u, chipX + textWidth(chip, Fonts.mono, 8f * u, 0.16f) + 12f * u, y + 7f * u)
+            fill.color = t.panel
+            c.drawRect(rect, fill)
+            label(c, chip, chipX + 6f * u, y + 3f * u, 8f * u, t.dim)
+        }
 
         stroke.color = t.line
         stroke.strokeWidth = max(1f, u * 0.8f)
         c.drawLine(r.left, r.bottom + 2f * u, r.right, r.bottom + 2f * u, stroke)
     }
 
-    private fun tabs(c: Canvas, r: RectF) {
-        val n = Page.entries.size
-        val gap = 4f * u
-        val tw = min((r.width() - gap * (n - 1)) / n, 74f * u)
+    /** A small state word in the header (LOCKED, BELT OFF…); returns its width. */
+    internal fun headerState(c: Canvas, word: String, right: Float, y: Float, colour: Int): Float {
+        display(c, word, right, y + 5f * u, 10f * u, colour, Paint.Align.RIGHT)
+        return textWidth(word, Fonts.display, 10f * u, 0.04f)
+    }
+
+    internal fun tabs(c: Canvas, r: RectF, rows: Int = 1) {
+        val perRow = (Page.entries.size + rows - 1) / rows
+        val gap = 3f * u
+        val tw = min((r.width() - gap * (perRow - 1)) / perRow, 74f * u)
+        val th = (r.height() - gap * (rows - 1)) / rows
+        val tabText = min(8.5f * u, tw / 6.2f)
         for ((i, p) in Page.entries.withIndex()) {
-            val x = r.left + i * (tw + gap)
-            val box = RectF(x, r.top, x + tw, r.bottom)
+            val x = r.left + (i % perRow) * (tw + gap)
+            val y = r.top + (i / perRow) * (th + gap)
+            val box = RectF(x, y, x + tw, y + th)
             val active = p == page
             fill.color = if (active) t.text else t.panel
             c.drawRect(box, fill)
@@ -219,7 +306,7 @@ class DashRenderer(assets: AssetManager) {
                 stroke.strokeWidth = max(1f, u * 0.8f)
                 c.drawRect(box, stroke)
             }
-            label(c, p.title.uppercase(), box.centerX(), box.centerY() + 3f * u, 8.5f * u, if (active) t.bg else t.dim, Paint.Align.CENTER, 0.1f)
+            label(c, p.title.uppercase(), box.centerX(), box.centerY() + tabText * 0.36f, tabText, if (active) t.bg else t.dim, Paint.Align.CENTER, 0.06f)
             newHits += box to { page = p }
         }
     }
@@ -228,7 +315,7 @@ class DashRenderer(assets: AssetManager) {
     // The instrument column (always visible)
     // =========================================================================================
 
-    private fun instrumentColumn(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, gear: Int?) {
+    internal fun instrumentColumn(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, gear: Int?) {
         val gap = 5f * u
         val nominal = floatArrayOf(96f, 40f, 46f, 30f, 30f, 30f, 30f, 50f)
         val k = (r.height() - gap * (nominal.size - 1)) / nominal.sum()
@@ -332,9 +419,9 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
-    private class Chip(val name: String, val on: Boolean, val colour: Int)
+    internal class Chip(val name: String, val on: Boolean, val colour: Int)
 
-    private fun chip(c: Canvas, r: RectF, ch: Chip) {
+    internal fun chip(c: Canvas, r: RectF, ch: Chip) {
         if (ch.on) {
             fill.color = withAlpha(ch.colour, 60)
             c.drawRect(r, fill)
@@ -348,7 +435,7 @@ class DashRenderer(assets: AssetManager) {
         label(c, ch.name, r.centerX(), r.centerY() + 3f * u, min(8f * u, r.height() * 0.42f), if (ch.on) ch.colour else t.faint, Paint.Align.CENTER, 0.08f)
     }
 
-    private fun row(c: Canvas, r: RectF, name: String, value: String, colour: Int, suffix: String? = null) {
+    internal fun row(c: Canvas, r: RectF, name: String, value: String, colour: Int, suffix: String? = null) {
         panel(c, r)
         label(c, name, r.left + 6f * u, r.centerY() + 3.5f * u, 8.5f * u, t.dim)
         val size = r.height() * 0.6f
@@ -360,9 +447,9 @@ class DashRenderer(assets: AssetManager) {
         display(c, value, x, r.centerY() + size * 0.36f, size, if (value == "—") t.faint else colour, Paint.Align.RIGHT, glow = true)
     }
 
-    private fun rowBar(r: RectF) = RectF(r.left + r.width() * 0.34f, r.top + r.height() * 0.32f, r.left + r.width() * 0.72f, r.bottom - r.height() * 0.32f)
+    internal fun rowBar(r: RectF) = RectF(r.left + r.width() * 0.34f, r.top + r.height() * 0.32f, r.left + r.width() * 0.72f, r.bottom - r.height() * 0.32f)
 
-    private fun sliderTrack(c: Canvas, r: RectF, pos: Float?) {
+    internal fun sliderTrack(c: Canvas, r: RectF, pos: Float?) {
         val b = rowBar(r)
         fill.color = t.line
         c.drawRect(b.left, b.centerY() - 1.5f * u, b.right, b.centerY() + 1.5f * u, fill)
@@ -373,7 +460,7 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
-    private fun segments(c: Canvas, r: RectF, n: Int, frac: Float, colourAt: (Float) -> Int) {
+    internal fun segments(c: Canvas, r: RectF, n: Int, frac: Float, colourAt: (Float) -> Int) {
         val gap = max(1f, r.width() * 0.006f)
         val sw = (r.width() - gap * (n - 1)) / n
         val lit = (frac.coerceIn(0f, 1f) * n)
@@ -388,7 +475,7 @@ class DashRenderer(assets: AssetManager) {
     // DRIVE: the live wireframe car
     // =========================================================================================
 
-    private fun drivePage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, dt: Float) {
+    internal fun drivePage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, dt: Float) {
         frame(c, r)
         val wide = r.width() > r.height() * 1.6f
         val side = if (wide) RectF(r.right - r.width() * 0.27f, r.top + 8f * u, r.right - 8f * u, r.bottom - 8f * u) else null
@@ -422,60 +509,19 @@ class DashRenderer(assets: AssetManager) {
         }
         display(c, "${cam.title.uppercase()} · $state",
             stage.right - 6f * u, stage.top + 44f * u, 11f * u, t.text, Paint.Align.RIGHT)
-        label(c, "MODEL: PROCEDURAL ${cfg.car.chassis} · ${cfg.car.engine} · ${cfg.subtitle}", stage.left + 8f * u, stage.bottom - 6f * u, 6.5f * u, t.faint)
+        label(c, "MODEL: PROCEDURAL ${cfg.car.chassis} · ${cfg.subtitle}", stage.left + 8f * u, stage.bottom - 6f * u, 6.5f * u, t.faint)
 
         if (!live) {
             display(c, "VEHICLE POWERED OFF", stage.centerX(), stage.centerY() - 4f * u, 16f * u, t.text, Paint.Align.CENTER, glow = true)
             label(c, s.link.message.uppercase().take(60), stage.centerX(), stage.centerY() + 12f * u, 7.5f * u, t.dim, Paint.Align.CENTER)
         }
 
-        if (side != null) driveSide(c, side, s, cfg)
-    }
-
-    private fun driveSide(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
-        val gap = 5f * u
-        val tyreH = r.height() * 0.36f
-        val tyres = RectF(r.left, r.top, r.right, r.top + tyreH)
-        panel(c, tyres)
-        label(c, if (cfg.imperial) "TYRES · PSI" else "TYRES · BAR", tyres.left + 6f * u, tyres.top + 11f * u, 7.5f * u, t.dim)
-        val names = listOf("FL" to Channel.TIRE_FL, "FR" to Channel.TIRE_FR, "RL" to Channel.TIRE_RL, "RR" to Channel.TIRE_RR)
-        val cellW = tyres.width() / 2
-        val cellH = (tyres.height() - 16f * u) / 2
-        for ((i, p) in names.withIndex()) {
-            val cx = tyres.left + (i % 2) * cellW
-            val cy = tyres.top + 16f * u + (i / 2) * cellH
-            label(c, p.first, cx + 8f * u, cy + 12f * u, 7.5f * u, t.dim)
-            val kpa = s[p.second, 15_000]
-            val low = kpa != null && kpa < 193f
-            val v = kpa?.let { if (cfg.imperial) (it / 6.8948f).roundToInt().toString() else "%.1f".format(it / 100f) } ?: "—"
-            display(c, v, cx + cellW - 10f * u, cy + cellH * 0.78f, min(cellH * 0.5f, 18f * u), if (low) t.secondary else if (kpa == null) t.faint else t.text, Paint.Align.RIGHT, glow = kpa != null)
-        }
-        var y = tyres.bottom + gap
-        val rowH = (r.bottom - y - gap * 3) / 4
-        val temp = temps(cfg)
-        val items = listOf(
-            Triple("FUEL", s[Channel.FUEL]?.let { "${it.roundToInt()}%" }, s[Channel.FUEL]?.let { it / 100f }),
-            Triple("AIR", s[Channel.INTAKE_TEMP]?.let { temp(it) }, null),
-            Triple("BATTERY", s[Channel.BATTERY]?.let { "%.1f V".format(it) }, null),
-            Triple(if (cfg.imperial) "BEST 0-60" else "BEST 0-100", SessionStats.bestLaunchMs?.let { "%.2f S".format(it / 1000f) }, null),
-        )
-        for ((name, value, frac) in items) {
-            val b = RectF(r.left, y, r.right, y + rowH)
-            panel(c, b)
-            label(c, name, b.left + 6f * u, b.top + 11f * u, 7.5f * u, t.dim)
-            display(c, value ?: "—", b.right - 6f * u, b.bottom - (if (frac != null) 9f else 6f) * u, min(b.height() * 0.42f, 16f * u),
-                if (value == null) t.faint else t.text, Paint.Align.RIGHT, glow = value != null)
-            if (frac != null) {
-                fill.color = t.text
-                c.drawRect(b.left + 6f * u, b.bottom - 6f * u, b.left + 6f * u + (b.width() - 12f * u) * frac.coerceIn(0f, 1f), b.bottom - 4f * u, fill)
-            }
-            y += rowH + gap
-        }
+        if (side != null) driveTiles(c, side, s, cfg)
     }
 
     // ---- 3D --------------------------------------------------------------------------------
 
-    private fun updateCamera(dt: Float) {
+    internal fun updateCamera(dt: Float) {
         val (ty, tp) = when (cam) {
             Cam.AUTO -> { targetYaw += 0.22f * dt; targetYaw to 0.30f }
             Cam.ORBIT -> targetYaw to 0.30f
@@ -492,9 +538,9 @@ class DashRenderer(assets: AssetManager) {
         pitch += (tp - pitch) * min(1f, dt * 4f)
     }
 
-    private class Proj(val ox: Float, val oy: Float, val f: Float, val cam: FloatArray, val right: FloatArray, val up: FloatArray, val fwd: FloatArray)
+    internal class Proj(val ox: Float, val oy: Float, val f: Float, val cam: FloatArray, val right: FloatArray, val up: FloatArray, val fwd: FloatArray)
 
-    private fun projection(r: RectF, distScale: Float = 1f): Proj {
+    internal fun projection(r: RectF, distScale: Float = 1f): Proj {
         val dist = 6.4f * distScale
         val target = floatArrayOf(0f, 0.55f, 0f)
         val camPos = floatArrayOf(
@@ -506,11 +552,11 @@ class DashRenderer(assets: AssetManager) {
         return Proj(r.centerX(), r.centerY() + r.height() * 0.06f, min(r.width() * 0.95f, r.height() * 1.55f), camPos, right, up, fwd)
     }
 
-    private val ca = FloatArray(3)
-    private val cb = FloatArray(3)
+    internal val ca = FloatArray(3)
+    internal val cb = FloatArray(3)
 
     /** World point to camera space (right, up, depth). */
-    private fun toCam(p: Proj, x: Float, y: Float, z: Float, out: FloatArray) {
+    internal fun toCam(p: Proj, x: Float, y: Float, z: Float, out: FloatArray) {
         val vx = x - p.cam[0]; val vy = y - p.cam[1]; val vz = z - p.cam[2]
         out[0] = vx * p.right[0] + vy * p.right[1] + vz * p.right[2]
         out[1] = vx * p.up[0] + vy * p.up[1] + vz * p.up[2]
@@ -518,7 +564,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** Projects a world point into [out] (x, y); returns false when it is behind the camera. */
-    private fun project(p: Proj, x: Float, y: Float, z: Float, out: FloatArray): Boolean {
+    internal fun project(p: Proj, x: Float, y: Float, z: Float, out: FloatArray): Boolean {
         toCam(p, x, y, z, ca)
         if (ca[2] < NEAR) return false
         out[0] = p.ox + p.f * ca[0] / ca[2]
@@ -526,11 +572,11 @@ class DashRenderer(assets: AssetManager) {
         return true
     }
 
-    private val pa = FloatArray(2)
-    private val pb = FloatArray(2)
+    internal val pa = FloatArray(2)
+    internal val pb = FloatArray(2)
 
     /** Adds world-space segments to [into], clipping any that cross behind the camera. */
-    private fun addSegments(p: Proj, segs: FloatArray, into: Path, transform: ((FloatArray) -> Unit)? = null) {
+    internal fun addSegments(p: Proj, segs: FloatArray, into: Path, transform: ((FloatArray) -> Unit)? = null) {
         val a = FloatArray(3)
         val b = FloatArray(3)
         var i = 0
@@ -553,7 +599,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** Splits segments into near / middle / far paths by depth relative to [centre], for depth fading. */
-    private fun addSegmentsByDepth(p: Proj, segs: FloatArray, into: Array<Path>, centre: Float, transform: ((FloatArray) -> Unit)? = null) {
+    internal fun addSegmentsByDepth(p: Proj, segs: FloatArray, into: Array<Path>, centre: Float, transform: ((FloatArray) -> Unit)? = null) {
         val one = FloatArray(6)
         val tmp = Path()
         var i = 0
@@ -572,7 +618,7 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
-    private fun glowPath(c: Canvas, p: Path, colour: Int, width: Float) {
+    internal fun glowPath(c: Canvas, p: Path, colour: Int, width: Float) {
         stroke.strokeCap = Paint.Cap.ROUND
         stroke.color = withAlpha(colour, 38)
         stroke.strokeWidth = width * 4.5f
@@ -586,7 +632,8 @@ class DashRenderer(assets: AssetManager) {
         stroke.strokeCap = Paint.Cap.BUTT
     }
 
-    private fun drawCar(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, live: Boolean, callouts: Boolean) {
+    internal fun drawCar(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, live: Boolean, callouts: Boolean,
+                         reveal: Float = 1f, gridAlpha: Float = 1f) {
         c.save()
         c.clipRect(r)
         val p = projection(r)
@@ -601,24 +648,31 @@ class DashRenderer(assets: AssetManager) {
             addSegments(p, floatArrayOf(-ext, 0f, k, ext, 0f, k), gridPath)
             k += GRID
         }
-        stroke.color = withAlpha(t.grid, 46)
+        stroke.color = withAlpha(t.grid, (46 * gridAlpha).toInt())
         stroke.strokeWidth = max(1f, 0.8f * u)
-        c.drawPath(gridPath, stroke)
+        if (gridAlpha > 0f) c.drawPath(gridPath, stroke)
 
-        val colour = if (live) t.primary else withAlpha(t.primary, 90)
+        val colour = if (live) t.car else withAlpha(t.car, 90)
+        // the boot draws the car line by line: body first, then the lights and wheels
+        fun part(a: FloatArray, from: Float, to: Float): FloatArray {
+            if (reveal >= to) return a
+            if (reveal <= from) return FloatArray(0)
+            val n = ((a.size / 6) * (reveal - from) / (to - from)).toInt() * 6
+            return a.copyOf(n)
+        }
         toCam(p, 0f, 0.6f, 0f, cb)
         val centre = cb[2]
         // near side bright, far side dim: the depth cue that makes a wireframe read as a solid car
         val body = arrayOf(Path(), Path(), Path())
         val kit = cfg.bodyKit
-        addSegmentsByDepth(p, CarWireframe.body(kit), body, centre)
+        addSegmentsByDepth(p, part(CarWireframe.body(kit), 0f, 0.7f), body, centre)
         val heads = Path()
-        addSegments(p, CarWireframe.headLights(kit), heads)
+        addSegments(p, part(CarWireframe.headLights(kit), 0.6f, 0.8f), heads)
         val steerRad = Math.toRadians(((s[Channel.STEERING] ?: 0f) / 13.5f).toDouble()).toFloat()
         for ((ax, front) in listOf(CarWireframe.FRONT_AXLE to true, CarWireframe.REAR_AXLE to false)) {
             for (side in floatArrayOf(-1f, 1f)) {
                 val cz = side * CarWireframe.TRACK_HALF
-                val segs = CarWireframe.wheel(ax, cz, wheelSpin, cfg.fiveSpoke)
+                val segs = part(CarWireframe.wheel(ax, cz, wheelSpin, cfg.fiveSpoke), 0.7f, 1f)
                 if (front && steerRad != 0f) {
                     val cs = cos(steerRad); val sn = sin(steerRad)
                     addSegmentsByDepth(p, segs, body, centre) { v ->
@@ -631,35 +685,44 @@ class DashRenderer(assets: AssetManager) {
         glowPath(c, body[2], withAlpha(colour, (Color.alpha(colour) * 0.28f).toInt()), 0.9f * u)
         glowPath(c, body[1], withAlpha(colour, (Color.alpha(colour) * 0.62f).toInt()), 1.1f * u)
         glowPath(c, body[0], colour, 1.4f * u)
-        glowPath(c, heads, if (live) mix(colour, t.text, 0.55f) else colour, 1.5f * u)
+        val lights = s[Channel.HEADLIGHTS, 10_000]
+        glowPath(c, heads, if (live) mix(colour, t.text, if ((lights ?: 0f) >= 2f) 0.85f else 0.55f) else colour,
+            (if ((lights ?: 0f) >= 2f) 2.2f else 1.5f) * u)
 
-        val braking = (s[Channel.BRAKE] ?: 0f) > 5f
+        val braking = (s[Channel.BRAKE] ?: 0f) > 5f || (s[Channel.BRAKE_LIGHT] ?: 0f) >= 0.5f
         val tails = Path()
-        addSegments(p, CarWireframe.tailLights(kit), tails)
+        addSegments(p, part(CarWireframe.tailLights(kit), 0.6f, 0.8f), tails)
         glowPath(c, tails, if (braking) t.text else colour, (if (braking) 2.6f else 1.3f) * u)
 
         if (callouts && live) {
             val wheels = listOf(
-                Triple("FL", Channel.TIRE_FL, floatArrayOf(CarWireframe.FRONT_AXLE, 0.62f, -CarWireframe.TRACK_HALF - 0.1f)),
-                Triple("FR", Channel.TIRE_FR, floatArrayOf(CarWireframe.FRONT_AXLE, 0.62f, CarWireframe.TRACK_HALF + 0.1f)),
-                Triple("RL", Channel.TIRE_RL, floatArrayOf(CarWireframe.REAR_AXLE, 0.62f, -CarWireframe.TRACK_HALF - 0.1f)),
-                Triple("RR", Channel.TIRE_RR, floatArrayOf(CarWireframe.REAR_AXLE, 0.62f, CarWireframe.TRACK_HALF + 0.1f)),
+                Triple("FL", Channel.TIRE_FL to Channel.WHEEL_FL, floatArrayOf(CarWireframe.FRONT_AXLE, 0.62f, -CarWireframe.TRACK_HALF - 0.1f)),
+                Triple("FR", Channel.TIRE_FR to Channel.WHEEL_FR, floatArrayOf(CarWireframe.FRONT_AXLE, 0.62f, CarWireframe.TRACK_HALF + 0.1f)),
+                Triple("RL", Channel.TIRE_RL to Channel.WHEEL_RL, floatArrayOf(CarWireframe.REAR_AXLE, 0.62f, -CarWireframe.TRACK_HALF - 0.1f)),
+                Triple("RR", Channel.TIRE_RR to Channel.WHEEL_RR, floatArrayOf(CarWireframe.REAR_AXLE, 0.62f, CarWireframe.TRACK_HALF + 0.1f)),
             )
             val speed = s[Channel.SPEED]?.let { (if (cfg.imperial) it * KPH_TO_MPH else it).roundToInt() }
             toCam(p, 0f, 0.6f, 0f, cb)
             val centreDepth = cb[2]
-            for ((name, ch, pos) in wheels) {
+            for ((name, chs, pos) in wheels) {
                 toCam(p, pos[0], pos[1], pos[2], cb)
                 if (cb[2] > centreDepth + 0.45f) continue // far side: hidden behind the body
                 if (!project(p, pos[0], pos[1], pos[2], pa)) continue
-                val kpa = s[ch, 15_000]
+                val kpa = s[chs.first, 15_000]
+                val wheel = s[chs.second]
                 val txt = when {
+                    wheel != null -> "$name ${(if (cfg.imperial) wheel * KPH_TO_MPH else wheel).roundToInt()} ${if (cfg.imperial) "MPH" else "KM/H"}" +
+                        (kpa?.let { " · ${if (cfg.imperial) "${(it / 6.8948f).roundToInt()} PSI" else "%.1f BAR".format(it / 100f)}" } ?: "")
                     kpa != null -> "$name ${if (cfg.imperial) "${(kpa / 6.8948f).roundToInt()} PSI" else "%.1f BAR".format(kpa / 100f)}"
                     speed != null -> "$name $speed ${if (cfg.imperial) "MPH" else "KM/H"}"
                     else -> continue
                 }
                 tag(c, txt, pa[0], pa[1], 6.5f * u, false)
             }
+            if (lights != null && lights >= 1f && project(p, 2.1f, 1.35f, 0f, pa)) {
+                tag(c, when (lights.roundToInt()) { 1 -> "PARKING"; 2 -> "LOW BEAM"; else -> "HIGH BEAM" }, pa[0], pa[1], 7f * u, false)
+            }
+            if ((s[Channel.REVERSE] ?: 0f) >= 0.5f && project(p, -2.4f, 0.6f, 0f, pa)) tag(c, "REVERSE", pa[0], pa[1], 7f * u, true)
             if (braking && project(p, -2.3f, 1.15f, 0f, pa)) tag(c, "BRAKE ${(s[Channel.BRAKE] ?: 0f).roundToInt()}%", pa[0], pa[1], 8f * u, true)
             if (rpmShown >= cfg.shiftRpm && project(p, 1.0f, 1.45f, 0f, pa)) tag(c, "SHIFT", pa[0], pa[1], 9f * u, true)
         }
@@ -667,7 +730,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** A callout box with a hairline border, like a HUD tag. */
-    private fun tag(c: Canvas, s: String, x: Float, y: Float, size: Float, strong: Boolean) {
+    internal fun tag(c: Canvas, s: String, x: Float, y: Float, size: Float, strong: Boolean) {
         val w = textWidth(s, Fonts.mono, size, 0.1f) + size * 1.2f
         val h = size * 1.8f
         rect.set(x - w / 2, y - h / 2, x + w / 2, y + h / 2)
@@ -683,16 +746,33 @@ class DashRenderer(assets: AssetManager) {
     // SHIFT: live revs and a rev-match score for every gear change
     // =========================================================================================
 
-    private fun shiftPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
+    internal fun shiftPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         frame(c, r)
         val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
         display(c, "SHIFTS · REV-MATCH SCORE", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
         label(c, "LIVE · GEAR · RPM · CLUTCH", inner.right, inner.top + 10f * u, 7f * u, t.dim, Paint.Align.RIGHT)
         val body = RectF(inner.left, inner.top + 22f * u, inner.right, inner.bottom - 14f * u)
         val leftW = body.width() * 0.3f
-        val box = RectF(body.left, body.top, body.left + leftW, body.bottom)
+        val techH = body.height() * 0.34f
+        val box = RectF(body.left, body.top, body.left + leftW, body.bottom - techH - 6f * u)
 
+        // technique: what you did on the downshifts
         val last = ShiftTracker.last
+        val techs = listOf(
+            Triple("YOU · HEEL-TOE", ShiftTracker.heelToeCount, last?.heelToe == true),
+            Triple("YOU · BLIP", ShiftTracker.blipCount, last?.blip == true),
+            Triple("YOU · DOUBLE CLUTCH", ShiftTracker.doubleClutchCount, last?.doubleClutch == true),
+        )
+        val th = (techH - 8f * u) / 3
+        for ((i, tq) in techs.withIndex()) {
+            val tb = RectF(box.left, box.bottom + 6f * u + i * (th + 4f * u), box.right, box.bottom + 6f * u + i * (th + 4f * u) + th)
+            panel(c, tb, if (tq.third) t.primary else t.line)
+            label(c, tq.first, tb.left + 6f * u, tb.top + min(th * 0.42f, 11f * u), min(7f * u, th * 0.3f), t.dim)
+            display(c, if (tq.third) "LAST SHIFT" else "—", tb.left + 6f * u, tb.bottom - 4f * u, min(th * 0.34f, 10f * u),
+                if (tq.third) t.primary else t.faint)
+            display(c, "×${tq.second}", tb.right - 6f * u, tb.bottom - 4f * u, min(th * 0.5f, 14f * u), t.text, Paint.Align.RIGHT, glow = true)
+        }
+
         panel(c, box)
         label(c, "LAST SHIFT", box.left + 6f * u, box.top + 11f * u, 7.5f * u, t.dim)
         if (last == null) {
@@ -749,7 +829,7 @@ class DashRenderer(assets: AssetManager) {
         label(c, "${ShiftTracker.count} SHIFTS", inner.right, inner.bottom, 7f * u, t.dim, Paint.Align.RIGHT)
     }
 
-    private fun ratingColour(score: Int) = when {
+    internal fun ratingColour(score: Int) = when {
         score >= 90 -> t.primary
         score >= 75 -> t.text
         score >= 55 -> t.dim
@@ -757,7 +837,7 @@ class DashRenderer(assets: AssetManager) {
         else -> t.faint
     }
 
-    private fun traceLine(c: Canvas, r: RectF, data: FloatArray, lo: Float, hi: Float, colour: Int, width: Float) {
+    internal fun traceLine(c: Canvas, r: RectF, data: FloatArray, lo: Float, hi: Float, colour: Int, width: Float) {
         path.reset()
         var started = false
         for (i in data.indices) {
@@ -779,7 +859,7 @@ class DashRenderer(assets: AssetManager) {
     // ENGINE: every reading with a live trace
     // =========================================================================================
 
-    private fun enginePage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
+    internal fun enginePage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         frame(c, r)
         val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
         val mode = when {
@@ -802,8 +882,12 @@ class DashRenderer(assets: AssetManager) {
             Spark("AIR TEMP", Channel.INTAKE_TEMP, s[Channel.INTAKE_TEMP]?.let { toF(it).roundToInt().toString() }, deg, -10f, 60f, toF),
             Spark("BATTERY", Channel.BATTERY, s[Channel.BATTERY]?.let { "%.1f".format(it) }, "V", 11f, 15f, null),
             Spark("FUEL LEVEL", Channel.FUEL, s[Channel.FUEL]?.let { "${it.roundToInt()}" }, "%", 0f, 100f, null),
+            Spark("IGNITION TIMING", Channel.TIMING, s[Channel.TIMING]?.let { "%.1f".format(it) }, "° BTDC", -10f, 50f, null),
+            Spark("MASS AIRFLOW", Channel.MAF, s[Channel.MAF]?.let { "%.1f".format(it) }, "G/S", 0f, 200f, null),
+            Spark("LAMBDA", Channel.LAMBDA, s[Channel.LAMBDA]?.let { "%.3f".format(it) }, "λ", 0.7f, 1.3f, null),
+            Spark("FUEL TRIM S / L", Channel.STFT, s[Channel.STFT]?.let { st -> "%+.1f / %s".format(st, s[Channel.LTFT]?.let { "%+.1f".format(it) } ?: "—") }, "%", -25f, 25f, null),
         )
-        val cols = if (grid.width() > grid.height() * 1.7f) 4 else 2
+        val cols = if (grid.width() > grid.height() * 1.4f) 4 else 2
         val rows = (cells.size + cols - 1) / cols
         val gap = 6f * u
         val cw = (grid.width() - gap * (cols - 1)) / cols
@@ -815,9 +899,9 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
-    private class Spark(val name: String, val ch: Channel, val value: String?, val unit: String, val lo: Float, val hi: Float, val conv: ((Float) -> Float)?)
+    internal class Spark(val name: String, val ch: Channel, val value: String?, val unit: String, val lo: Float, val hi: Float, val conv: ((Float) -> Float)?)
 
-    private fun sparkCell(c: Canvas, r: RectF, sp: Spark) {
+    internal fun sparkCell(c: Canvas, r: RectF, sp: Spark) {
         panel(c, r)
         label(c, sp.name, r.left + 6f * u, r.top + 11f * u, 7f * u, t.dim)
         val size = min(r.height() * 0.3f, r.width() * 0.2f)
@@ -838,7 +922,7 @@ class DashRenderer(assets: AssetManager) {
     // HANDLING: the g radar and the session
     // =========================================================================================
 
-    private fun handlingPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
+    internal fun handlingPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         frame(c, r)
         val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
         display(c, "HANDLING · G-FORCE", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
@@ -877,7 +961,7 @@ class DashRenderer(assets: AssetManager) {
         label(c, "TAP TO RESET", radar.left, radar.top + 4f * u, 6.5f * u, t.faint)
     }
 
-    private fun gRadar(c: Canvas, r: RectF) {
+    internal fun gRadar(c: Canvas, r: RectF) {
         val cx = r.centerX()
         val cy = r.centerY()
         val rad = min(r.width(), r.height()) / 2f - 4f * u
@@ -915,7 +999,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** Felt-force convention: braking (negative lon) moves the dot up, a right turn moves it left. */
-    private fun gPoint(cx: Float, cy: Float, rad: Float, range: Float, lat: Float, lon: Float): Pair<Float, Float> {
+    internal fun gPoint(cx: Float, cy: Float, rad: Float, range: Float, lat: Float, lon: Float): Pair<Float, Float> {
         var dx = -lat / range
         var dy = lon / range
         val len = sqrt(dx * dx + dy * dy)
@@ -927,7 +1011,7 @@ class DashRenderer(assets: AssetManager) {
     // BUS: the raw CAN traffic
     // =========================================================================================
 
-    private fun busPage(c: Canvas, r: RectF, s: Snapshot) {
+    internal fun busPage(c: Canvas, r: RectF, s: Snapshot) {
         frame(c, r)
         val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
         display(c, "BUS · LIVE CAN", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
@@ -971,54 +1055,11 @@ class DashRenderer(assets: AssetManager) {
     }
 
     // =========================================================================================
-    // STYLE: themes with a live preview
-    // =========================================================================================
-
-    private fun stylePage(c: Canvas, r: RectF, cfg: DashConfig, dt: Float) {
-        frame(c, r)
-        val inner = RectF(r.left + 10f * u, r.top + 8f * u, r.right - 10f * u, r.bottom - 8f * u)
-        display(c, "STYLE · CUSTOMIZE", inner.left, inner.top + 13f * u, 13f * u, t.text, glow = true)
-        val body = RectF(inner.left, inner.top + 22f * u, inner.right, inner.bottom)
-        val listW = body.width() * 0.42f
-        val list = RectF(body.left, body.top, body.left + listW, body.bottom)
-        label(c, "PRESETS", list.left, list.top + 8f * u, 7f * u, t.dim)
-        val cols = 2
-        val gap = 4f * u
-        val n = Theme.ALL.size
-        val rowsN = (n + cols - 1) / cols
-        val bh = min(22f * u, (list.height() - 14f * u - gap * (rowsN - 1)) / rowsN)
-        val bw = (list.width() - gap) / cols
-        for ((i, th) in Theme.ALL.withIndex()) {
-            val x = list.left + (i % cols) * (bw + gap)
-            val y = list.top + 14f * u + (i / cols) * (bh + gap)
-            val b = RectF(x, y, x + bw, y + bh)
-            val active = th.key == t.key
-            fill.color = t.panel
-            c.drawRect(b, fill)
-            stroke.color = if (active) t.text else t.line
-            stroke.strokeWidth = (if (active) 1.4f else 0.8f) * u
-            c.drawRect(b, stroke)
-            val sw = bh * 0.45f
-            fill.color = th.primary
-            c.drawRect(b.left + 5f * u, b.centerY() - sw / 2, b.left + 5f * u + sw, b.centerY() + sw / 2, fill)
-            fill.color = th.secondary
-            c.drawRect(b.left + 6f * u + sw, b.centerY() - sw / 2, b.left + 6f * u + sw * 1.5f, b.centerY() + sw / 2, fill)
-            label(c, th.name.uppercase(), b.left + 12f * u + sw * 1.5f, b.centerY() + 3f * u, 7.5f * u, if (active) t.text else t.dim)
-            newHits += b to { onThemePicked?.invoke(th.key) }
-        }
-        val preview = RectF(list.right + 12f * u, body.top, body.right, body.bottom)
-        panel(c, preview)
-        label(c, "LIVE PREVIEW", preview.right - 6f * u, preview.top + 11f * u, 7f * u, t.dim, Paint.Align.RIGHT)
-        roadOffset = (roadOffset + 2f * dt) % GRID
-        drawCar(c, preview, VehicleData.snapshot(), cfg, live = true, callouts = false)
-    }
-
-    // =========================================================================================
     // Drawing helpers
     // =========================================================================================
 
     /** A panel: dark fill, hairline edge, a small bracket on the top-right corner. */
-    private fun panel(c: Canvas, r: RectF, edge: Int = t.line, weight: Float = 0.8f) {
+    internal fun panel(c: Canvas, r: RectF, edge: Int = t.line, weight: Float = 0.8f) {
         fill.color = t.panel
         c.drawRect(r, fill)
         stroke.color = edge
@@ -1031,7 +1072,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** The big page frame: corner brackets only, like a viewfinder. */
-    private fun frame(c: Canvas, r: RectF) {
+    internal fun frame(c: Canvas, r: RectF) {
         stroke.color = t.line
         stroke.strokeWidth = max(1f, 0.8f * u)
         c.drawRect(r, stroke)
@@ -1047,7 +1088,7 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
-    private fun label(
+    internal fun label(
         c: Canvas, s: String, x: Float, y: Float, size: Float, colour: Int,
         align: Paint.Align = Paint.Align.LEFT, spacing: Float = 0.16f,
     ) {
@@ -1059,7 +1100,7 @@ class DashRenderer(assets: AssetManager) {
         c.drawText(s, x, y, text)
     }
 
-    private fun display(
+    internal fun display(
         c: Canvas, s: String, x: Float, y: Float, size: Float, colour: Int,
         align: Paint.Align = Paint.Align.LEFT, glow: Boolean = false,
     ) {
@@ -1074,7 +1115,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     /** The huge glowing figures in the speed and gear boxes, with the zero slashed. */
-    private fun bigFigure(c: Canvas, s: String, cx: Float, baseline: Float, size: Float, colour: Int) {
+    internal fun bigFigure(c: Canvas, s: String, cx: Float, baseline: Float, size: Float, colour: Int) {
         display(c, s, cx, baseline, size, colour, Paint.Align.CENTER, glow = s != "—")
         if ('0' !in s) return
         text.typeface = Fonts.display
@@ -1094,18 +1135,18 @@ class DashRenderer(assets: AssetManager) {
         stroke.strokeCap = Paint.Cap.BUTT
     }
 
-    private fun textWidth(s: String, tf: Typeface, size: Float, spacing: Float): Float {
+    internal fun textWidth(s: String, tf: Typeface, size: Float, spacing: Float): Float {
         text.typeface = tf
         text.textSize = size
         text.letterSpacing = spacing
         return text.measureText(s)
     }
 
-    private fun temps(cfg: DashConfig): (Float) -> String = { v ->
+    internal fun temps(cfg: DashConfig): (Float) -> String = { v ->
         if (cfg.imperial) "${(v * 9f / 5f + 32f).roundToInt()}°F" else "${v.roundToInt()}°C"
     }
 
-    private fun tempColour(v: Float?, cold: Float, warn: Float, crit: Float): Int = when {
+    internal fun tempColour(v: Float?, cold: Float, warn: Float, crit: Float): Int = when {
         v == null -> t.faint
         v >= crit -> t.primary
         v >= warn -> t.secondary
@@ -1113,16 +1154,16 @@ class DashRenderer(assets: AssetManager) {
         else -> t.text
     }
 
-    private fun gearNumber(s: Snapshot, cfg: DashConfig): Int? {
+    internal fun gearNumber(s: Snapshot, cfg: DashConfig): Int? {
         s[Channel.GEAR]?.let { return it.roundToInt() }
         val rpm = s[Channel.RPM] ?: return null
         val speed = s[Channel.SPEED] ?: return null
         return GearEstimator.estimate(rpm, speed, cfg)
     }
 
-    private fun gearLabel(g: Int?) = when (g) { null -> "–"; 0 -> "N"; -1 -> "R"; else -> g.toString() }
+    internal fun gearLabel(g: Int?) = when (g) { null -> "–"; 0 -> "N"; -1 -> "R"; else -> g.toString() }
 
-    private fun mix(a: Int, b: Int, t: Float): Int {
+    internal fun mix(a: Int, b: Int, t: Float): Int {
         fun ch(x: Int, y: Int) = (x + (y - x) * t).roundToInt().coerceIn(0, 255)
         return android.graphics.Color.rgb(
             ch(android.graphics.Color.red(a), android.graphics.Color.red(b)),
@@ -1131,21 +1172,23 @@ class DashRenderer(assets: AssetManager) {
         )
     }
 
-    private fun withAlpha(colour: Int, alpha: Int) = (colour and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
+    internal fun withAlpha(colour: Int, alpha: Int) = (colour and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
-    private fun norm(v: FloatArray): FloatArray {
+    internal fun norm(v: FloatArray): FloatArray {
         val n = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).coerceAtLeast(1e-6f)
         return floatArrayOf(v[0] / n, v[1] / n, v[2] / n)
     }
 
-    private fun cross(a: FloatArray, b: FloatArray) = floatArrayOf(
+    internal fun cross(a: FloatArray, b: FloatArray) = floatArrayOf(
         a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0],
     )
 
     companion object {
         const val KPH_TO_MPH = 0.621371f
-        private const val TRAIL = 48
-        private const val GRID = 0.9f
-        private const val NEAR = 0.3f
+        internal const val TRAIL = 48
+        internal const val GRID = 0.9f
+        internal const val NEAR = 0.3f
+        internal const val BOOT_MS = 6200L
+        internal const val CHECK_MS = 4200L
     }
 }

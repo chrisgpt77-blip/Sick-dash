@@ -11,7 +11,13 @@ enum class ObdPid(val pid: Int, val channel: Channel, val bytes: Int, val fast: 
     INTAKE(0x0F, Channel.INTAKE_TEMP, 1, false, { it[0] - 40f }),
     OIL(0x5C, Channel.OIL_TEMP, 1, false, { it[0] - 40f }),
     VOLTAGE(0x42, Channel.BATTERY, 2, false, { (it[0] * 256 + it[1]) / 1000f }),
-    FUEL(0x2F, Channel.FUEL, 1, false, { it[0] * 100f / 255f });
+    FUEL(0x2F, Channel.FUEL, 1, false, { it[0] * 100f / 255f }),
+    TIMING(0x0E, Channel.TIMING, 1, false, { it[0] / 2f - 64f }),
+    MAF(0x10, Channel.MAF, 2, false, { (it[0] * 256 + it[1]) / 100f }),
+    LOAD(0x04, Channel.LOAD, 1, false, { it[0] * 100f / 255f }),
+    STFT(0x06, Channel.STFT, 1, false, { (it[0] - 128) * 100f / 128f }),
+    LTFT(0x07, Channel.LTFT, 1, false, { (it[0] - 128) * 100f / 128f }),
+    LAMBDA(0x44, Channel.LAMBDA, 2, false, { (it[0] * 256 + it[1]) * 2f / 65536f });
 
     val request: String get() = "01%02X".format(pid)
 

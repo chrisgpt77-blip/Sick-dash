@@ -36,9 +36,9 @@ class DashScreen(carContext: CarContext, private val renderer: SurfaceRenderer) 
                 }.build()
             )
             .addAction(
-                Action.Builder().setTitle("Units").setOnClickListener {
-                    val imperial = prefs.getString("units", "imperial") == "imperial"
-                    prefs.edit().putString("units", if (imperial) "metric" else "imperial").apply()
+                Action.Builder().setTitle(if (dash.switcherOpen) "Close" else "Pages").setOnClickListener {
+                    dash.switcherOpen = !dash.switcherOpen
+                    invalidate()
                 }.build()
             )
             .addAction(Action.Builder().setTitle("Reset").setOnClickListener { dash.resetSession() }.build())

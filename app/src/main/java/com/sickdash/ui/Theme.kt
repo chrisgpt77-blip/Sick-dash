@@ -15,7 +15,15 @@ class Theme(
     val dim: Int = Color.rgb(150, 150, 160),
     val faint: Int = Color.rgb(72, 72, 80),
     val grid: Int = Color.rgb(200, 200, 210),
+    /** Wireframe line colour; the primary unless picked separately. */
+    val car: Int = primary,
 ) {
+    /** This theme with any colour-picker overrides applied. */
+    fun with(primary: Int?, secondary: Int?, car: Int?): Theme =
+        if (primary == null && secondary == null && car == null) this
+        else Theme(key, name, primary ?: this.primary, secondary ?: this.secondary, bg, panel, line, text, dim, faint, grid,
+            car ?: primary ?: this.car)
+
     companion object {
         val ALL = listOf(
             Theme("akasaka", "Akasaka", Color.rgb(255, 36, 72), Color.rgb(242, 169, 59)),
@@ -35,5 +43,12 @@ class Theme(
         )
 
         fun of(key: String?) = ALL.firstOrNull { it.key == key } ?: ALL[0]
+
+        /** The colour-picker palette. */
+        val SWATCHES = listOf(
+            Color.rgb(255, 36, 72), Color.rgb(235, 10, 30), Color.rgb(255, 122, 61), Color.rgb(242, 169, 59),
+            Color.rgb(252, 238, 10), Color.rgb(57, 255, 106), Color.rgb(79, 216, 255), Color.rgb(47, 123, 255),
+            Color.rgb(140, 110, 255), Color.rgb(255, 106, 213), Color.rgb(237, 237, 241),
+        )
     }
 }

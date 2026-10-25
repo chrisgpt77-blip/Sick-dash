@@ -2,22 +2,42 @@
 
 A sci-fi HUD dashboard for the **2022–2026 Toyota GR86 / Subaru BRZ** (ZN8 / ZD8). It runs on your Android phone and on the **Android Auto** screen, and reads live data straight off the car's CAN bus or OBD-II port. It also ships presets for the Nissan 370Z, and works with standard OBD-II on any car.
 
-![Drive page](docs/screenshots/drive_1280x720.png)
+![Drive page](docs/screenshots/drive_wide_1920x720.png)
 
-| Shift · rev-match score | Engine |
+| Start-up: boot | Start-up: system check |
 |---|---|
-| ![](docs/screenshots/shift_1280x720.png) | ![](docs/screenshots/engine_1280x720.png) |
-| **Handling · G-force** | **Style · themes** |
-| ![](docs/screenshots/handling_1280x720.png) | ![](docs/screenshots/style_1280x720.png) |
+| ![](docs/screenshots/boot_2_car_1280x720.png) | ![](docs/screenshots/boot_3_check_1280x720.png) |
+| **Shift · rev-match and technique** | **Dyno · road pull** |
+| ![](docs/screenshots/shift_1280x720.png) | ![](docs/screenshots/dyno_1280x720.png) |
+| **Throttle · heel-toe** | **Timers** |
+| ![](docs/screenshots/throttle_1280x720.png) | ![](docs/screenshots/timers_1280x720.png) |
+| **Pages (task switcher)** | **Style · themes, colours, tiles** |
+| ![](docs/screenshots/pages_1280x720.png) | ![](docs/screenshots/style_1280x720.png) |
 
-<details><summary>More: side camera, ultra-wide head unit, phone</summary>
+<details><summary>More: clutch, VDC, systems, body, powered off, other cameras, phone</summary>
 
+![](docs/screenshots/clutch_1280x720.png)
+![](docs/screenshots/vdc_1280x720.png)
+![](docs/screenshots/systems_1280x720.png)
+![](docs/screenshots/body_1280x720.png)
+![](docs/screenshots/diff_asc_1280x720.png)
+![](docs/screenshots/powered_off_1280x720.png)
+![](docs/screenshots/boot_4_sweep_1280x720.png)
+![](docs/screenshots/drive_1280x720.png)
 ![](docs/screenshots/drive_side_1280x720.png)
 ![](docs/screenshots/drive_rear34_1280x720.png)
 ![](docs/screenshots/drive_stock_1280x720.png)
-![](docs/screenshots/drive_wide_1920x720.png)
 <img src="docs/screenshots/phone_portrait_1080x2340.png" width="300">
 </details>
+
+## Start-up
+
+Every launch plays a six-second start-up sequence. Tap anywhere to skip it.
+1. **Boot.** A scan line sweeps the screen. The wordmark glitches in and the spec line types itself out. Then the wireframe car draws itself line by line: body first, then lights, then wheels.
+2. **System check.** "CAN NODES · LISTENING" shows each module on the bus (ECM, ABS·VDC, steering, TCM, body, meter) with its live message rate. Then every signal is ticked off, group by group, with its live value. It ends in a verdict badge, e.g. **21 OK · 0 TO CHECK**.
+3. **Rev sweep.** The rev bar sweeps to the limiter and back, and the dash fades in.
+
+If the car is switched off for more than 10 s while the app is open, the dash shows **VEHICLE POWERED OFF**, with the last drive's distance, time and top speed. When the car comes back, the system check plays again. You can replay any animation from the Style page.
 
 ## What's on it
 
@@ -28,16 +48,30 @@ The **instrument column** on the left is always visible:
 - Oil temp, steering angle, throttle and brake bars.
 - Clutch IN/OUT and coolant.
 
-The pages are tabs along the bottom. On the car screen, tap the tabs on a touchscreen, or use the **page button** in the action strip.
+The **header** shows the link and its health ("■ CAN · 440 MSG/S · 22 SIGNALS · 22 VERIFIED"). It also shows LOCKED and BELT states when the car reports them, and REC while recording. The **PAGES** button opens a task switcher with every page as a card.
+
+**Pop-ups** appear for engine start, each scored shift ("3 → 2 · PERFECT"), launch armed, 0–60 and quarter-mile results, clutch slip, over-rev, cold engine, low fuel, lock/unlock and recording.
+
+The pages are tabs along the bottom (two rows on a phone held upright). On the car screen you can tap the tabs on a touchscreen, or use the **page** and **Pages** buttons in the action strip.
 
 | Page | |
 |---|---|
-| **Drive** | A glowing wireframe GR86 with the real car's details: trapezoid grille, swept headlights, corner fangs, the fender vent and rocker line, wraparound L tail lights, ducktail and twin exhausts. It's depth-faded so it reads as a solid car. Settings let you choose 5-spoke or stock 10-spoke wheels, and a lowered stance with lip, side skirts and raised ducktail. The car sits on a grid that streams by at road speed. Wheels spin at road speed, front wheels steer with the steering wheel and tail lights light up under braking. Tyre-pressure callouts sit on each wheel. Camera modes: Auto (orbit), Orbit (drag), Chase, 3/4, Side, Top. Side panel shows tyres, fuel, air temp, battery and best 0–60. |
-| **Shift** | The last 10 s of revs with every gear change marked. Each change gets a **rev-match score**: how close the engine speed was to what the new gear needs when the clutch came out. Ratings: PERFECT 90+, CLEAN 75+, GOOD 55+, ROUGH 30+, MISSED. |
-| **Engine** | Every reading with a 10-second live trace. |
+| **Drive** | A glowing wireframe GR86 with the real car's details: trapezoid grille, swept headlights, corner fangs, the fender vent and rocker line, wraparound L tail lights, ducktail and twin exhausts. It's depth-faded so it reads as a solid car. Settings let you choose 5-spoke or stock 10-spoke wheels, and a lowered stance with lip, side skirts and raised ducktail. The car sits on a grid that streams by at road speed. Wheels spin at road speed and the front wheels steer. Tail lights light under braking and headlights follow the light switch. Callouts on each wheel show tyre pressure (and wheel speed when available). Camera modes: Auto (orbit), Orbit (drag), Chase, 3/4, Side, Top. On wide screens, six shortcut tiles sit beside the car; you choose which on the Style page. |
+| **Body** | Doors, locks, belt, lights, park brake, reverse, brake lights, fuel, odometer and all four tyres, next to the car. |
 | **Handling** | G-force radar with trail and peak ring. Peak lateral/brake/accel g, best and last 0–60 (or 0–100 km/h), top speed, distance. Tap the radar to reset the session. |
+| **Diff** | All four wheel speeds, the rear left–right split against what the yaw rate expects, rear-vs-front slip, and whether the Torsen LSD is biasing. Needs wheel speeds (id 0x13A), which come from the DCM connector, not the ASC; the page says so if they're missing. |
+| **Shift** | The last 10 s of revs with every gear change marked. Each change gets a **rev-match score**: how close the engine speed was to what the new gear needs when the clutch came out. Ratings: PERFECT 90+, CLEAN 75+, GOOD 55+, ROUGH 30+, MISSED. It also counts your **heel-toe** downshifts, **throttle blips** and **double-clutches**. |
+| **Clutch** | Engine rpm against the gearbox speed implied by road speed and gear, shown as two rings. Also the difference, slip %, a friction heat estimate, slip events and a 30-second slip trace. |
+| **Throttle** | Throttle, brake and rpm traces over 10 s, with heel-toe overlap shaded. Also time at full throttle. |
+| **Engine** | Twelve readings with 10-second live traces: rpm, pedal, speed, coolant, oil, air temp, battery, fuel, ignition timing, mass airflow, lambda and fuel trims. |
+| **Dyno** | Wheel power and torque against rpm, worked out from acceleration, mass, drag and rolling resistance. Do a full-throttle pull in a gear and the curve appears, with your best pull kept underneath. |
+| **VDC** | Balance: the yaw rate the steering asks for (bicycle model) against what the car actually does. A meter reads UNDERSTEER, NEUTRAL, OVERSTEER or DRIFT, with a 10-second trace and time spent oversteering. |
+| **Timers** | Automatic from a standstill: 0–60 mph, 0–100 km/h, 0–100 mph, ⅛ and ¼ mile (with trap speed), and 60–0 braking distance. Best and last for each. The **RECORD** button logs every signal to CSV at 20 Hz. |
+| **Systems** | Every signal with its value, its source (e.g. `CAN 0x40`, `OBD 0C`, `PHONE IMU`), its update rate and a status: OK, CHECK, STALE or NOT MAPPED. |
 | **Bus** | Live CAN traffic: every ID, its rate and its bytes, with changing bytes lit. |
-| **Style** | Theme presets with a live preview: Akasaka, Gazoo, WR Blue, Cyberpunk, Midnight, Matrix, Sunset, Ice, Daylight. |
+| **Style** | Theme presets (Akasaka, Gazoo, WR Blue, Cyberpunk, Midnight, Matrix, Sunset, Ice, Daylight) with a live preview. Colour pickers for the primary, secondary and car-line colours. Buttons to play each animation. The six Drive-page tiles. |
+
+Nothing is faked. A signal the car doesn't send (or that isn't in the CAN profile yet) shows as NOT MAPPED. On the GR86, door locks, belt, headlights, odometer, VDC, cruise and park brake have no publicly documented IDs yet. Find them with the **CAN sniffer** and add them to the profile, and they light up everywhere. **Demo** mode simulates all of them, so you can see every feature without a car.
 
 ## Connecting to a GR86 / BRZ
 
@@ -106,9 +140,13 @@ GR86 / BRZ factory numbers (Subaru spec sheet):
 Tyres are 215/40R18, or 215/45R17 on base cars. Redline is 7,500 rpm.
 
 Car-screen controls:
-- **Action strip:** page, theme, units, reset.
+- **Action strip:** page (next page), Pages (task switcher), Theme, Reset.
 - **Map pan button:** drag to orbit the car.
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
+
+## Drive logs
+
+Tap **RECORD** on the Timers page to log every signal to CSV at 20 Hz. Tap again to stop. To send the newest log anywhere (Drive, email, a spreadsheet), use **Settings → Share latest drive log**. Logs are kept in the app's own storage, under `Android/data/com.sickdash/files/logs`.
 
 ## Releases
 
@@ -137,8 +175,11 @@ To sign locally, set `SICKDASH_KEYSTORE` (path), `SICKDASH_KEYSTORE_PASSWORD`, `
 
 `app/src/main/java/com/sickdash`:
 - `can/`: adapters (Bluetooth LE serial, Bluetooth SPP, TCP, USB serial) and the ELM327 session (OBD / raw / auto, with DauntlessOBD extensions) and SLCAN session. Also OBD PIDs, and the JSON CAN profile format (byte or bit fields, scale/offset, lookup maps, clamps).
-- `data/`: the live value store, car presets, the shift/rev-match tracker, session stats (0–60, peaks), 10-second history, phone G-sensor and the demo drive.
-- `ui/DashRenderer.kt`: the whole HUD drawn on a Canvas, shared by the phone and Android Auto.
+- `data/`: the live value store (with each signal's source), car presets, the shift/technique tracker, `Analytics` (clutch slip, VDC balance, dyno, drag timers), events, the CSV recorder, 10-second history, phone G-sensor and the demo drive.
+- `ui/DashRenderer.kt`: the HUD frame drawn on a Canvas, shared by the phone and Android Auto.
+  - `ui/Boot.kt`: the start-up animation and system check.
+  - `ui/Overlays.kt`: pop-ups, the task switcher, Drive tiles and the powered-off screen.
+  - `ui/PagesVehicle.kt`, `ui/PagesPowertrain.kt`, `ui/PageStyle.kt`: the pages.
   - `ui/CarWireframe.kt`: the procedurally lofted GR86-proportioned wireframe.
   - `ui/Theme.kt`: the colour themes.
 - `auto/`: the Android Auto app (NavigationTemplate surface at ~30 fps, with tap and pan support).

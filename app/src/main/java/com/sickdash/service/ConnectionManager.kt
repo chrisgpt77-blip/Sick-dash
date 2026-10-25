@@ -78,6 +78,7 @@ object ConnectionManager {
             VehicleData.clearAll()
             VehicleData.sniffer.clear()
             VehicleData.linkMode = if (cfg.source == Source.DEMO) "DEMO" else "—"
+            VehicleData.nodes = if (cfg.source == Source.DEMO) emptyMap() else runCatching { loadProfile(ctx).nodes }.getOrDefault(emptyMap())
             VehicleData.setStatus(LinkState.CONNECTING, "Connecting: ${cfg.source.label}…")
             var transport: Transport? = null
             try {

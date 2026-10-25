@@ -63,6 +63,8 @@ class CanProfile(
     val name: String,
     val bitrate: Int,
     val signals: List<SignalDef>,
+    /** Which module sends which ids, for the boot-time "CAN nodes" check. */
+    val nodes: Map<String, List<Int>> = emptyMap(),
 ) {
     private val byId: Map<Int, List<SignalDef>> = signals.groupBy { it.id }
 
@@ -109,10 +111,18 @@ class CanProfile(
                     max = o.optDouble("max", Double.POSITIVE_INFINITY).toFloat(),
                 )
             }
+            val nodes = LinkedHashMap<String, List<Int>>()
+            root.optJSONObject("nodes")?.let { n ->
+                for (k in n.keys()) {
+                    val ids = n.getJSONArray(k)
+                    nodes[k] = (0 until ids.length()).map { parseInt(ids.get(it)) }
+                }
+            }
             return CanProfile(
                 name = root.optString("name", "Custom profile"),
                 bitrate = root.optInt("bitrate", 500_000),
                 signals = list,
+                nodes = nodes,
             )
         }
 

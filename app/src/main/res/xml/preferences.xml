@@ -73,6 +73,13 @@
             app:summary="See every id on the bus live to find or verify signals" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="Drive logs">
+        <Preference
+            app:key="share_log"
+            app:title="Share latest drive log"
+            app:summary="Record from the Timers page; logs are CSV with every signal at 20 Hz" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="Display">
         <ListPreference
             app:key="units"
