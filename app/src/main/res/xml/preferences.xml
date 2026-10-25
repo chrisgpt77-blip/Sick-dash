@@ -8,6 +8,17 @@
             app:defaultValue="gr86"
             app:useSimpleSummaryProvider="true" />
         <ListPreference
+            app:key="wheels"
+            app:title="Wheels (wireframe)"
+            app:defaultValue="5spoke"
+            app:entries="@array/wheel_names"
+            app:entryValues="@array/wheel_values"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:key="body_kit"
+            app:title="Lowered with lip, side skirts and ducktail"
+            app:defaultValue="true" />
+        <ListPreference
             app:key="transmission"
             app:title="Gearbox"
             app:defaultValue="mt"

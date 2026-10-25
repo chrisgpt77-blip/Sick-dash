@@ -13,6 +13,8 @@ A sci-fi HUD dashboard for the **2022–2026 Toyota GR86 / Subaru BRZ** (ZN8 / Z
 <details><summary>More: side camera, ultra-wide head unit, phone</summary>
 
 ![](docs/screenshots/drive_side_1280x720.png)
+![](docs/screenshots/drive_rear34_1280x720.png)
+![](docs/screenshots/drive_stock_1280x720.png)
 ![](docs/screenshots/drive_wide_1920x720.png)
 <img src="docs/screenshots/phone_portrait_1080x2340.png" width="300">
 </details>
@@ -30,7 +32,7 @@ The pages are tabs along the bottom. On the car screen, tap the tabs on a touchs
 
 | Page | |
 |---|---|
-| **Drive** | A glowing wireframe GR86 on a grid that streams by at road speed. Wheels spin at road speed, front wheels steer with the steering wheel and tail lights light up under braking. Tyre-pressure callouts sit on each wheel. Camera modes: Auto (orbit), Orbit (drag), Chase, 3/4, Side, Top. Side panel shows tyres, fuel, air temp, battery and best 0–60. |
+| **Drive** | A glowing wireframe GR86 with the real car's details: trapezoid grille, swept headlights, corner fangs, the fender vent and rocker line, wraparound L tail lights, ducktail and twin exhausts. It's depth-faded so it reads as a solid car. Settings let you choose 5-spoke or stock 10-spoke wheels, and a lowered stance with lip, side skirts and raised ducktail. The car sits on a grid that streams by at road speed. Wheels spin at road speed, front wheels steer with the steering wheel and tail lights light up under braking. Tyre-pressure callouts sit on each wheel. Camera modes: Auto (orbit), Orbit (drag), Chase, 3/4, Side, Top. Side panel shows tyres, fuel, air temp, battery and best 0–60. |
 | **Shift** | The last 10 s of revs with every gear change marked. Each change gets a **rev-match score**: how close the engine speed was to what the new gear needs when the clutch came out. Ratings: PERFECT 90+, CLEAN 75+, GOOD 55+, ROUGH 30+, MISSED. |
 | **Engine** | Every reading with a 10-second live trace. |
 | **Handling** | G-force radar with trail and peak ring. Peak lateral/brake/accel g, best and last 0–60 (or 0–100 km/h), top speed, distance. Tap the radar to reset the session. |

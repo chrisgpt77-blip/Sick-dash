@@ -81,6 +81,10 @@ data class DashConfig(
     val phoneGSensor: Boolean,
     val car: CarPreset = CarPreset.GR86,
     val automatic: Boolean = false,
+    /** Wireframe: five-spoke aftermarket wheels instead of the stock ten-spoke. */
+    val fiveSpoke: Boolean = true,
+    /** Wireframe: lowered, with lip splitter, side skirts and raised ducktail. */
+    val bodyKit: Boolean = true,
 ) {
     /** "FA24D · 6MT" under the wordmark. */
     val subtitle: String get() = "${car.engine} · ${gearRatios.size}${if (automatic) "AT" else "MT"}"
@@ -133,6 +137,8 @@ data class DashConfig(
                 phoneGSensor = p.getBoolean("phone_g", true),
                 car = car,
                 automatic = automatic,
+                fiveSpoke = p.getString("wheels", "5spoke") == "5spoke",
+                bodyKit = p.getBoolean("body_kit", true),
             )
         }
 

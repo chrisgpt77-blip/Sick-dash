@@ -23,9 +23,12 @@ import java.io.File
 class DashScreenshotTest {
     private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    private fun cfg(theme: String? = null): DashConfig {
+    private fun cfg(theme: String? = null, stock: Boolean = false): DashConfig {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
-        prefs.edit().putString("theme", theme).commit()
+        prefs.edit().putString("theme", theme)
+            .putString("wheels", if (stock) "stock" else "5spoke")
+            .putBoolean("body_kit", !stock)
+            .commit()
         return DashConfig.load(prefs)
     }
 
@@ -62,11 +65,14 @@ class DashScreenshotTest {
     private fun shot(
         name: String, w: Int, h: Int, page: DashRenderer.Page, rpm: Float, speed: Float, gear: Int,
         theme: String? = null, cam: DashRenderer.Cam = DashRenderer.Cam.QUARTER,
+        yaw: Float? = null, stock: Boolean = false,
     ) {
         val r = DashRenderer(ctx.assets).also { it.page = page; it.cam = cam }
+        // ORBIT holds a hand-set angle: orbit() moves the target by -dx * 0.008 from 0.7 rad.
+        if (yaw != null) { r.cam = DashRenderer.Cam.ORBIT; r.orbit((0.7f - yaw) / 0.008f) }
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val cfg = cfg(theme)
+        val cfg = cfg(theme, stock)
         repeat(220) { i ->
             clock += 50
             feed(rpm, speed, gear, i)
@@ -82,6 +88,9 @@ class DashScreenshotTest {
         shot("drive_800x480", 800, 480, DashRenderer.Page.DRIVE, 7150f, 121f, 3)
         shot("drive_wide_1920x720", 1920, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, "wrblue")
         shot("drive_side_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, cam = DashRenderer.Cam.SIDE)
+        shot("drive_rear34_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, yaw = (Math.PI - 0.7).toFloat())
+        shot("drive_front_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, yaw = 0.25f)
+        shot("drive_stock_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, stock = true)
         shot("shift_1280x720", 1280, 720, DashRenderer.Page.SHIFT, 5200f, 96f, 3)
         shot("engine_1280x720", 1280, 720, DashRenderer.Page.ENGINE, 5200f, 96f, 3, "cyberpunk")
         shot("handling_1280x720", 1280, 720, DashRenderer.Page.HANDLING, 5200f, 96f, 3)

@@ -2,6 +2,7 @@ package com.sickdash.ui
 
 import android.content.res.AssetManager
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -163,14 +164,14 @@ class DashRenderer(assets: AssetManager) {
 
     private fun header(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
         val y = r.centerY()
-        display(c, cfg.car.chassis, r.left, y + 6f * u, 17f * u, t.text, glow = true)
-        val cw = textWidth(cfg.car.chassis, Fonts.display, 17f * u, 0.04f)
-        label(c, "SICK DASH", r.left + cw + 7f * u, y + 4f * u, 9f * u, t.dim, spacing = 0.28f)
+        display(c, cfg.car.wordmark, r.left, y + 6f * u, 17f * u, t.text, glow = true)
+        val cw = textWidth(cfg.car.wordmark, Fonts.display, 17f * u, 0.04f)
+        label(c, "${cfg.car.chassis} · SICK DASH", r.left + cw + 7f * u, y + 4f * u, 9f * u, t.dim, spacing = 0.28f)
 
         val src = if (cfg.source == Source.DEMO) "DEMO" else VehicleData.linkMode
         val fresh = Channel.entries.count { s[it, 2000] != null }
         val chip = "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · $fresh SIGNALS"
-        val chipX = r.left + cw + 80f * u
+        val chipX = r.left + cw + 7f * u + textWidth("${cfg.car.chassis} · SICK DASH", Fonts.mono, 9f * u, 0.28f) + 12f * u
         val chipW = textWidth(chip, Fonts.mono, 8f * u, 0.12f) + 12f * u
         if (chipX + chipW < r.centerX() + 40f * u) {
             rect.set(chipX, y - 7f * u, chipX + chipW, y + 7f * u)
@@ -412,7 +413,14 @@ class DashRenderer(assets: AssetManager) {
             x -= w + 3f * u
         }
         label(c, "WIREFRAME · LIVE CAR", stage.right - 6f * u, stage.top + 31f * u, 7f * u, t.dim, Paint.Align.RIGHT)
-        display(c, "${cam.title.uppercase()} · ${if ((s[Channel.BRAKE] ?: 0f) > 5f) "BRAKING" else "ORBIT"}",
+        val state = when {
+            !live -> "OFFLINE"
+            rpmShown >= cfg.shiftRpm -> "SHIFT"
+            (s[Channel.BRAKE] ?: 0f) > 5f -> "BRAKING"
+            (s[Channel.SPEED] ?: 0f) < 1f -> "PARKED"
+            else -> "DRIVING"
+        }
+        display(c, "${cam.title.uppercase()} · $state",
             stage.right - 6f * u, stage.top + 44f * u, 11f * u, t.text, Paint.Align.RIGHT)
         label(c, "MODEL: PROCEDURAL ${cfg.car.chassis} · ${cfg.car.engine} · ${cfg.subtitle}", stage.left + 8f * u, stage.bottom - 6f * u, 6.5f * u, t.faint)
 
@@ -544,6 +552,26 @@ class DashRenderer(assets: AssetManager) {
         }
     }
 
+    /** Splits segments into near / middle / far paths by depth relative to [centre], for depth fading. */
+    private fun addSegmentsByDepth(p: Proj, segs: FloatArray, into: Array<Path>, centre: Float, transform: ((FloatArray) -> Unit)? = null) {
+        val one = FloatArray(6)
+        val tmp = Path()
+        var i = 0
+        while (i + 5 < segs.size) {
+            System.arraycopy(segs, i, one, 0, 6)
+            i += 6
+            val a = floatArrayOf(one[0], one[1], one[2])
+            val b = floatArrayOf(one[3], one[4], one[5])
+            transform?.invoke(a); transform?.invoke(b)
+            toCam(p, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, ca)
+            val rel = ca[2] - centre
+            val bucket = when { rel < -0.35f -> 0; rel < 0.35f -> 1; else -> 2 }
+            tmp.reset()
+            addSegments(p, floatArrayOf(a[0], a[1], a[2], b[0], b[1], b[2]), tmp)
+            into[bucket].addPath(tmp)
+        }
+    }
+
     private fun glowPath(c: Canvas, p: Path, colour: Int, width: Float) {
         stroke.strokeCap = Paint.Cap.ROUND
         stroke.color = withAlpha(colour, 38)
@@ -578,28 +606,36 @@ class DashRenderer(assets: AssetManager) {
         c.drawPath(gridPath, stroke)
 
         val colour = if (live) t.primary else withAlpha(t.primary, 90)
-        val body = Path()
-        addSegments(p, CarWireframe.body, body)
-        addSegments(p, CarWireframe.headLights, body)
+        toCam(p, 0f, 0.6f, 0f, cb)
+        val centre = cb[2]
+        // near side bright, far side dim: the depth cue that makes a wireframe read as a solid car
+        val body = arrayOf(Path(), Path(), Path())
+        val kit = cfg.bodyKit
+        addSegmentsByDepth(p, CarWireframe.body(kit), body, centre)
+        val heads = Path()
+        addSegments(p, CarWireframe.headLights(kit), heads)
         val steerRad = Math.toRadians(((s[Channel.STEERING] ?: 0f) / 13.5f).toDouble()).toFloat()
         for ((ax, front) in listOf(CarWireframe.FRONT_AXLE to true, CarWireframe.REAR_AXLE to false)) {
             for (side in floatArrayOf(-1f, 1f)) {
                 val cz = side * CarWireframe.TRACK_HALF
-                val segs = CarWireframe.wheel(ax, cz, wheelSpin)
+                val segs = CarWireframe.wheel(ax, cz, wheelSpin, cfg.fiveSpoke)
                 if (front && steerRad != 0f) {
                     val cs = cos(steerRad); val sn = sin(steerRad)
-                    addSegments(p, segs, body) { v ->
+                    addSegmentsByDepth(p, segs, body, centre) { v ->
                         val dx = v[0] - ax; val dz = v[2] - cz
                         v[0] = ax + dx * cs - dz * sn; v[2] = cz + dx * sn + dz * cs
                     }
-                } else addSegments(p, segs, body)
+                } else addSegmentsByDepth(p, segs, body, centre)
             }
         }
-        glowPath(c, body, colour, 1.3f * u)
+        glowPath(c, body[2], withAlpha(colour, (Color.alpha(colour) * 0.28f).toInt()), 0.9f * u)
+        glowPath(c, body[1], withAlpha(colour, (Color.alpha(colour) * 0.62f).toInt()), 1.1f * u)
+        glowPath(c, body[0], colour, 1.4f * u)
+        glowPath(c, heads, if (live) mix(colour, t.text, 0.55f) else colour, 1.5f * u)
 
         val braking = (s[Channel.BRAKE] ?: 0f) > 5f
         val tails = Path()
-        addSegments(p, CarWireframe.tailLights, tails)
+        addSegments(p, CarWireframe.tailLights(kit), tails)
         glowPath(c, tails, if (braking) t.text else colour, (if (braking) 2.6f else 1.3f) * u)
 
         if (callouts && live) {
@@ -1085,6 +1121,15 @@ class DashRenderer(assets: AssetManager) {
     }
 
     private fun gearLabel(g: Int?) = when (g) { null -> "–"; 0 -> "N"; -1 -> "R"; else -> g.toString() }
+
+    private fun mix(a: Int, b: Int, t: Float): Int {
+        fun ch(x: Int, y: Int) = (x + (y - x) * t).roundToInt().coerceIn(0, 255)
+        return android.graphics.Color.rgb(
+            ch(android.graphics.Color.red(a), android.graphics.Color.red(b)),
+            ch(android.graphics.Color.green(a), android.graphics.Color.green(b)),
+            ch(android.graphics.Color.blue(a), android.graphics.Color.blue(b)),
+        )
+    }
 
     private fun withAlpha(colour: Int, alpha: Int) = (colour and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
