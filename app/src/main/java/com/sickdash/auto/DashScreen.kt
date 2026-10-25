@@ -7,34 +7,43 @@ import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.preference.PreferenceManager
-import com.sickdash.ui.DashRenderer
+import com.sickdash.ui.Theme
 
 /**
  * The only screen on the car display: a full-screen NavigationTemplate whose map surface we
- * draw the gauges on, plus a small action strip for switching layouts.
+ * draw the HUD on. The action strip pages through the HUD for head units without a touchscreen.
  */
 class DashScreen(carContext: CarContext, private val renderer: SurfaceRenderer) : Screen(carContext) {
+    init {
+        renderer.onChanged = { invalidate() }
+    }
+
     override fun onGetTemplate(): Template {
         val dash = renderer.dash
-        val nextPage = if (dash.page == DashRenderer.Page.DASH) "Race" else "Dash"
+        val prefs = PreferenceManager.getDefaultSharedPreferences(carContext)
         val strip = ActionStrip.Builder()
             .addAction(
-                Action.Builder().setTitle(nextPage).setOnClickListener {
-                    dash.page = if (dash.page == DashRenderer.Page.DASH) DashRenderer.Page.RACE else DashRenderer.Page.DASH
+                Action.Builder().setTitle(dash.page.title).setOnClickListener {
+                    dash.nextPage()
                     invalidate()
                 }.build()
             )
             .addAction(
+                Action.Builder().setTitle("Theme").setOnClickListener {
+                    val all = Theme.ALL
+                    val i = all.indexOfFirst { it.key == prefs.getString("theme", null) }
+                    prefs.edit().putString("theme", all[(i + 1).mod(all.size)].key).apply()
+                }.build()
+            )
+            .addAction(
                 Action.Builder().setTitle("Units").setOnClickListener {
-                    val prefs = PreferenceManager.getDefaultSharedPreferences(carContext)
                     val imperial = prefs.getString("units", "imperial") == "imperial"
                     prefs.edit().putString("units", if (imperial) "metric" else "imperial").apply()
                 }.build()
             )
-            .addAction(
-                Action.Builder().setTitle("Reset G").setOnClickListener { dash.resetPeaks() }.build()
-            )
+            .addAction(Action.Builder().setTitle("Reset").setOnClickListener { dash.resetSession() }.build())
             .build()
-        return NavigationTemplate.Builder().setActionStrip(strip).build()
+        val mapStrip = ActionStrip.Builder().addAction(Action.PAN).build()
+        return NavigationTemplate.Builder().setActionStrip(strip).setMapActionStrip(mapStrip).build()
     }
 }

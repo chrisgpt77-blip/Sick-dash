@@ -11,6 +11,15 @@
         <item>monitor</item>
     </string-array>
 
+    <string-array name="transmission_names">
+        <item>6-speed manual</item>
+        <item>6-speed automatic</item>
+    </string-array>
+    <string-array name="transmission_values">
+        <item>mt</item>
+        <item>at</item>
+    </string-array>
+
     <string-array name="unit_names">
         <item>MPH / °F</item>
         <item>km/h / °C</item>
@@ -18,22 +27,5 @@
     <string-array name="unit_values">
         <item>imperial</item>
         <item>metric</item>
-    </string-array>
-
-    <string-array name="accent_names">
-        <item>Cyan</item>
-        <item>Nismo red</item>
-        <item>Orange</item>
-        <item>Lime</item>
-        <item>Purple</item>
-        <item>White</item>
-    </string-array>
-    <string-array name="accent_values">
-        <item>#00E5FF</item>
-        <item>#FF1E3C</item>
-        <item>#FF8A00</item>
-        <item>#B6FF00</item>
-        <item>#B04DFF</item>
-        <item>#F2F4F7</item>
     </string-array>
 </resources>

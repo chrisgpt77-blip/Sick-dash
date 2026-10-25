@@ -76,6 +76,50 @@ class ParsersTest {
         assertEquals(90f, out[Channel.COOLANT])
     }
 
+    private fun frame(id: Int, hex: String) = CanFrame(id, hexToBytes(hex.replace(" ", ""))!!)
+
+    /** Example frames and expected values from github.com/timurrrr/ft86 can_bus/gen2.md. */
+    @Test
+    fun gr86Gen2ProfileDecodesDocumentedFrames() {
+        val profile = CanProfile.parse(File("src/main/assets/profiles/toyota_gr86_brz_gen2.json").readText())
+        val out = HashMap<Channel, Float>()
+        val sink: (Channel, Float) -> Unit = { c, v -> out[c] = v }
+
+        profile.decode(frame(0x40, "5D 0B C9 82 00 00 00 C7"), sink)      // parked
+        assertEquals(713f, out[Channel.RPM])
+        profile.decode(frame(0x40, "10 0D FA 06 33 00 00 C3"), sink)      // moving slowly
+        assertEquals(1786f, out[Channel.RPM])
+        assertEquals(20f, out[Channel.THROTTLE]!!, 0.01f)
+
+        profile.decode(frame(0x139, "72 5A 00 E0 08 00 DA 1C"), sink)     // parked
+        assertEquals(0f, out[Channel.SPEED])
+        profile.decode(frame(0x139, "62 5B FC E0 08 00 CD 1C"), sink)     // moving slowly
+        assertEquals(3.955f, out[Channel.SPEED]!!, 0.01f)
+
+        profile.decode(frame(0x138, "90 0D 13 FA 3F 00 00 00"), sink)     // 0xFA13 = -1517 -> 151.7 deg
+        assertEquals(151.7f, out[Channel.STEERING]!!, 0.01f)
+
+        profile.decode(frame(0x345, "00 00 00 82 7D 00 00 00"), sink)
+        assertEquals(90f, out[Channel.OIL_TEMP])
+        assertEquals(85f, out[Channel.COOLANT])
+
+        // gear lives in bits 35..37: byte 4 = 0b0001_1000 -> 3
+        profile.decode(frame(0x241, "00 00 00 00 18 80 00 00"), sink)
+        assertEquals(3f, out[Channel.GEAR])
+        assertEquals(100f, out[Channel.CLUTCH])
+
+        // US cluster: 36/33/35/34 psi; 0xFE means "not shown yet" and must be ignored
+        profile.decode(frame(0x6E2, "00 00 04 48 42 46 44 FE"), sink)
+        assertEquals(36f * 6.8948f, out[Channel.TIRE_FL]!!, 0.01f)
+        assertEquals(34f * 6.8948f, out[Channel.TIRE_RR]!!, 0.01f)
+        out.remove(Channel.TIRE_FL)
+        profile.decode(frame(0x6E2, "00 00 04 FE FE FE FE FE"), sink)
+        assertNull(out[Channel.TIRE_FL])
+
+        profile.decode(frame(0x139, "00 00 00 00 00 FF 00 00"), sink)     // full brake pressure clamps to 100 %
+        assertEquals(100f, out[Channel.BRAKE])
+    }
+
     @Test
     fun shortFrameIsIgnored() {
         val profile = CanProfile.parse("""{"signals":[{"channel":"rpm","id":"0x180","start":6,"length":2}]}""")

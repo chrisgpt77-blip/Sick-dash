@@ -16,45 +16,76 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-/** Renders the dashboard off-screen to PNGs in app/build/screenshots so the look can be reviewed without a car. */
+/** Renders every page off-screen to PNGs in app/build/screenshots so the look can be reviewed without a car. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class DashScreenshotTest {
-    private fun cfg(): DashConfig {
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        return DashConfig.load(PreferenceManager.getDefaultSharedPreferences(ctx))
+    private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    private fun cfg(theme: String? = null): DashConfig {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
+        prefs.edit().putString("theme", theme).commit()
+        return DashConfig.load(prefs)
     }
 
-    private fun feed(rpm: Float, speedKph: Float) {
-        VehicleData.set(Channel.RPM, rpm)
-        VehicleData.set(Channel.SPEED, speedKph)
-        VehicleData.set(Channel.THROTTLE, 87f)
-        VehicleData.set(Channel.COOLANT, 92f)
-        VehicleData.set(Channel.OIL_TEMP, 118f)
-        VehicleData.set(Channel.INTAKE_TEMP, 34f)
-        VehicleData.set(Channel.BATTERY, 14.2f)
-        VehicleData.set(Channel.LAT_G, -0.62f)
-        VehicleData.set(Channel.LON_G, -0.35f)
-        VehicleData.setStatus(LinkState.CONNECTED, "OBDLink MX+ · OBD-II · Bluetooth")
+    private var clock = System.currentTimeMillis()
+
+    /** A short drive: revs climbing through [gear], a shift every ~2.5 s, values stamped on one clock. */
+    private fun feed(rpm: Float, speedKph: Float, gear: Int, i: Int) {
+        val now = clock
+        fun set(c: Channel, v: Float) = VehicleData.set(c, v, now)
+        val phase = (i % 50) / 50f
+        val g = if (i < 150) 2 + (i / 50) % 3 else gear
+        set(Channel.RPM, if (i < 150) 3200f + 3600f * phase else rpm + 40f * (i % 7))
+        set(Channel.SPEED, speedKph)
+        set(Channel.GEAR, (if (i < 150 && phase < 0.06f) 0 else g).toFloat())
+        VehicleData.countFrame(now)
+        set(Channel.THROTTLE, 64f)
+        set(Channel.BRAKE, 0f)
+        set(Channel.CLUTCH, 0f)
+        set(Channel.STEERING, -14f)
+        set(Channel.COOLANT, 91f)
+        set(Channel.OIL_TEMP, 102f)
+        set(Channel.INTAKE_TEMP, 26f)
+        set(Channel.BATTERY, 14.2f)
+        set(Channel.FUEL, 58f)
+        set(Channel.LAT_G, 0.55f * kotlin.math.sin(i / 6f))
+        set(Channel.LON_G, -0.3f)
+        set(Channel.TIRE_FL, 36f * 6.8948f)
+        set(Channel.TIRE_FR, 36f * 6.8948f)
+        set(Channel.TIRE_RL, 34f * 6.8948f)
+        set(Channel.TIRE_RR, 35f * 6.8948f)
+        VehicleData.setStatus(LinkState.CONNECTED, "OBDLink MX+ · raw CAN · Bluetooth")
     }
 
-    private fun shot(name: String, w: Int, h: Int, page: DashRenderer.Page, rpm: Float, speed: Float) {
-        feed(rpm, speed)
-        val r = DashRenderer().also { it.page = page }
+    private fun shot(
+        name: String, w: Int, h: Int, page: DashRenderer.Page, rpm: Float, speed: Float, gear: Int,
+        theme: String? = null, cam: DashRenderer.Cam = DashRenderer.Cam.QUARTER,
+    ) {
+        val r = DashRenderer(ctx.assets).also { it.page = page; it.cam = cam }
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val cfg = cfg()
-        repeat(40) { r.draw(c, RectF(0f, 0f, w.toFloat(), h.toFloat()), VehicleData.snapshot(), cfg) }
+        val cfg = cfg(theme)
+        repeat(220) { i ->
+            clock += 50
+            feed(rpm, speed, gear, i)
+            r.draw(c, RectF(0f, 0f, w.toFloat(), h.toFloat()), VehicleData.snapshot(clock), cfg)
+        }
         val dir = File("build/screenshots").also { it.mkdirs() }
         File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test
     fun renderScreens() {
-        shot("car_dash_800x480", 800, 480, DashRenderer.Page.DASH, 5450f, 97f)
-        shot("car_dash_wide_1920x720", 1920, 720, DashRenderer.Page.DASH, 6650f, 142f)
-        shot("car_race_1280x720", 1280, 720, DashRenderer.Page.RACE, 7120f, 158f)
-        shot("phone_portrait_1080x2340", 1080, 2340, DashRenderer.Page.DASH, 3200f, 64f)
+        shot("drive_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 4300f, 88f, 3)
+        shot("drive_800x480", 800, 480, DashRenderer.Page.DRIVE, 7150f, 121f, 3)
+        shot("drive_wide_1920x720", 1920, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, "wrblue")
+        shot("drive_side_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, cam = DashRenderer.Cam.SIDE)
+        shot("shift_1280x720", 1280, 720, DashRenderer.Page.SHIFT, 5200f, 96f, 3)
+        shot("engine_1280x720", 1280, 720, DashRenderer.Page.ENGINE, 5200f, 96f, 3, "cyberpunk")
+        shot("handling_1280x720", 1280, 720, DashRenderer.Page.HANDLING, 5200f, 96f, 3)
+        shot("style_1280x720", 1280, 720, DashRenderer.Page.STYLE, 2500f, 40f, 2, "matrix")
+        shot("phone_portrait_1080x2340", 1080, 2340, DashRenderer.Page.DRIVE, 3800f, 72f, 3)
     }
 }

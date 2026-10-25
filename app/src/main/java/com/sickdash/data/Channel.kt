@@ -1,6 +1,6 @@
 package com.sickdash.data
 
-/** Every value the dash can show. Internal units: km/h, °C, %, volts, degrees, g. */
+/** Every value the dash can show. Internal units: km/h, °C, %, volts, degrees, g, kPa (tyres). */
 enum class Channel(val key: String) {
     RPM("rpm"),
     SPEED("speed"),
@@ -13,8 +13,13 @@ enum class Channel(val key: String) {
     GEAR("gear"),
     STEERING("steering"),
     BRAKE("brake"),
+    CLUTCH("clutch"),
     LAT_G("lat_g"),
-    LON_G("lon_g");
+    LON_G("lon_g"),
+    TIRE_FL("tire_fl"),
+    TIRE_FR("tire_fr"),
+    TIRE_RL("tire_rl"),
+    TIRE_RR("tire_rr");
 
     companion object {
         private val byKey = entries.associateBy { it.key }

@@ -53,7 +53,7 @@ object GSensor : SensorEventListener {
         lon += (newLon - lon) * 0.15f
         lat += (newLat - lat) * 0.15f
         val cfg = DashConfig.current
-        if (cfg == null || cfg.phoneGSensor) {
+        if (cfg == null || (cfg.phoneGSensor && cfg.source != Source.DEMO)) {
             VehicleData.set(Channel.LAT_G, lat)
             VehicleData.set(Channel.LON_G, lon)
         }

@@ -15,7 +15,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.sickdash.service.CanService
 import com.sickdash.service.ConnectionManager
-import com.sickdash.ui.DashRenderer
 import com.sickdash.ui.DashView
 
 class MainActivity : AppCompatActivity() {
@@ -34,14 +33,11 @@ class MainActivity : AppCompatActivity() {
 
         dash = findViewById(R.id.dash)
         controls = findViewById(R.id.controls)
-        dash.setOnClickListener {
+        dash.onEmptyTap = {
             controls.visibility = if (controls.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
-        findViewById<Button>(R.id.btn_page).setOnClickListener {
-            val r = dash.renderer
-            r.page = if (r.page == DashRenderer.Page.DASH) DashRenderer.Page.RACE else DashRenderer.Page.DASH
-        }
-        findViewById<Button>(R.id.btn_reset).setOnClickListener { dash.renderer.resetPeaks() }
+        findViewById<Button>(R.id.btn_page).setOnClickListener { dash.renderer.nextPage() }
+        findViewById<Button>(R.id.btn_reset).setOnClickListener { dash.renderer.resetSession() }
         findViewById<Button>(R.id.btn_sniffer).setOnClickListener { startActivity(Intent(this, SnifferActivity::class.java)) }
         findViewById<Button>(R.id.btn_settings).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
 

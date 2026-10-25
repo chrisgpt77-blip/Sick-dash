@@ -8,7 +8,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.sickdash.can.CanProfile
 import com.sickdash.service.ConnectionManager
-import java.io.File
+import com.sickdash.data.DashConfig
 
 /** Edit the JSON that maps CAN ids/bytes to dash values. */
 class ProfileEditorActivity : AppCompatActivity() {
@@ -20,7 +20,7 @@ class ProfileEditorActivity : AppCompatActivity() {
         val status = findViewById<TextView>(R.id.status)
         editor.typeface = Typeface.MONOSPACE
         editor.setText(ConnectionManager.profileText(this))
-        val file = File(filesDir, ConnectionManager.PROFILE_FILE)
+        val file = ConnectionManager.profileFile(this)
 
         findViewById<Button>(R.id.btn_save).setOnClickListener {
             val txt = editor.text.toString()
@@ -36,7 +36,7 @@ class ProfileEditorActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_reset).setOnClickListener {
             file.delete()
             editor.setText(ConnectionManager.profileText(this))
-            status.text = "Restored the built-in Nissan 370Z profile."
+            status.text = "Restored the built-in profile for ${DashConfig.get(this).car.label}."
             ConnectionManager.restart()
         }
     }

@@ -117,13 +117,15 @@ object ConnectionManager {
         Source.DEMO -> error("demo has no transport")
     }
 
-    const val PROFILE_FILE = "can_profile.json"
-    const val DEFAULT_PROFILE_ASSET = "profiles/nissan_370z.json"
+    /** The user's edited profile for the selected car, if they saved one. */
+    fun profileFile(ctx: Context): File = File(ctx.filesDir, "can_profile_${DashConfig.get(ctx).car.key}.json")
+
+    fun defaultProfileText(ctx: Context): String =
+        ctx.assets.open(DashConfig.get(ctx).car.profileAsset).bufferedReader().use { it.readText() }
 
     fun profileText(ctx: Context): String {
-        val f = File(ctx.filesDir, PROFILE_FILE)
-        return if (f.exists()) f.readText()
-        else ctx.assets.open(DEFAULT_PROFILE_ASSET).bufferedReader().use { it.readText() }
+        val f = profileFile(ctx)
+        return if (f.exists()) f.readText() else defaultProfileText(ctx)
     }
 
     fun loadProfile(ctx: Context): CanProfile = CanProfile.parse(profileText(ctx))

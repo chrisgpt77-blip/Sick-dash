@@ -6,9 +6,9 @@ import org.junit.Test
 class GearEstimatorTest {
     private val cfg = DashConfig(
         source = Source.DEMO, btAddress = "", host = "", port = 0, usbBaud = 0, rawCan = false,
-        imperial = false, accent = 0, redline = 7500, shiftRpm = 7000, maxRpm = 8000,
-        gearRatios = DashConfig.parseRatios(DashConfig.DEFAULT_RATIOS), finalDrive = 3.692f,
-        tireCircumferenceM = DashConfig.tireCircumference("275/35R19"), phoneGSensor = false,
+        imperial = false, themeKey = "akasaka", redline = 7500, shiftRpm = 7000, maxRpm = 8000,
+        gearRatios = DashConfig.parseRatios(DashConfig.DEFAULT_RATIOS), finalDrive = 4.1f,
+        tireCircumferenceM = DashConfig.tireCircumference("215/40R18"), phoneGSensor = false,
     )
 
     private fun rpmFor(gear: Int, kph: Float): Float {
@@ -30,6 +30,7 @@ class GearEstimatorTest {
     @Test
     fun tyreMaths() {
         assertEquals(2.06f, DashConfig.tireCircumference("275/35R19"), 0.02f)
-        assertEquals(2.12f, DashConfig.tireCircumference("garbage"), 0.001f)
+        assertEquals(1.93f, DashConfig.tireCircumference("215/40R18"), 0.02f)
+        assertEquals(1.93f, DashConfig.tireCircumference("garbage"), 0.001f)
     }
 }

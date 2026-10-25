@@ -11,7 +11,7 @@
         <Button android:id="@+id/btn_save" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:text="Save" />
         <Button android:id="@+id/btn_reset" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:text="Restore 370Z default" />
+            android:layout_height="wrap_content" android:text="Restore default" />
     </LinearLayout>
 
     <TextView android:id="@+id/status" android:layout_width="match_parent"

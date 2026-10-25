@@ -12,13 +12,19 @@ import androidx.car.app.SurfaceContainer
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import androidx.preference.PreferenceManager
 import com.sickdash.data.DashConfig
 import com.sickdash.data.VehicleData
 import com.sickdash.ui.DashRenderer
 
 /** Draws the dashboard onto the Android Auto "map" surface at ~30 fps. */
 class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) : DefaultLifecycleObserver {
-    val dash = DashRenderer()
+    val dash = DashRenderer(carContext.assets).apply {
+        onThemePicked = { key -> PreferenceManager.getDefaultSharedPreferences(carContext).edit().putString("theme", key).apply() }
+    }
+
+    /** Called after a tap changed something the action strip shows. */
+    var onChanged: (() -> Unit)? = null
 
     private val lock = Any()
     private var surface: Surface? = null
@@ -54,6 +60,15 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
         override fun onSurfaceDestroyed(container: SurfaceContainer) {
             stopLoop()
             synchronized(lock) { surface = null }
+        }
+
+        // Touchscreen head units: taps hit the HUD tabs, drags (in pan mode) orbit the car.
+        override fun onClick(x: Float, y: Float) {
+            if (dash.handleTap(x, y)) onChanged?.invoke()
+        }
+
+        override fun onScroll(distanceX: Float, distanceY: Float) {
+            dash.orbit(distanceX)
         }
     }
 

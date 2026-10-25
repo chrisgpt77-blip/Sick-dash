@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#06070A">
+    android:background="#08080A">
 
     <com.sickdash.ui.DashView
         android:id="@+id/dash"
@@ -15,22 +15,22 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
         android:layout_margin="12dp"
-        android:background="#E60E1117"
+        android:background="#E6111115"
         android:orientation="horizontal"
         android:padding="4dp"
         android:visibility="gone">
 
         <Button android:id="@+id/btn_page" style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Dash / Race" android:textColor="#ECF0F5" />
+            android:text="Next page" android:textColor="#ECF0F5" />
         <Button android:id="@+id/btn_reset" style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Reset G" android:textColor="#ECF0F5" />
+            android:text="Reset session" android:textColor="#ECF0F5" />
         <Button android:id="@+id/btn_sniffer" style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Sniffer" android:textColor="#ECF0F5" />
         <Button android:id="@+id/btn_settings" style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Settings" android:textColor="#00E5FF" />
+            android:text="Settings" android:textColor="#FF2448" />
     </LinearLayout>
 </FrameLayout>

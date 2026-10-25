@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <PreferenceCategory app:title="Car">
+        <ListPreference
+            app:key="car"
+            app:title="Car"
+            app:defaultValue="gr86"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:key="transmission"
+            app:title="Gearbox"
+            app:defaultValue="mt"
+            app:entries="@array/transmission_names"
+            app:entryValues="@array/transmission_values"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="Connection">
         <ListPreference
             app:key="source"
@@ -52,26 +67,20 @@
             app:entryValues="@array/unit_values"
             app:useSimpleSummaryProvider="true" />
         <ListPreference
-            app:key="accent"
-            app:title="Accent colour"
-            app:defaultValue="#00E5FF"
-            app:entries="@array/accent_names"
-            app:entryValues="@array/accent_values"
+            app:key="theme"
+            app:title="Theme"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
             app:key="shift_rpm"
             app:title="Shift light RPM"
-            app:defaultValue="7000"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
             app:key="redline"
             app:title="Redline RPM"
-            app:defaultValue="7500"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
             app:key="max_rpm"
             app:title="Tach maximum RPM"
-            app:defaultValue="8000"
             app:useSimpleSummaryProvider="true" />
         <SwitchPreferenceCompat
             app:key="phone_g"
@@ -80,21 +89,18 @@
             app:defaultValue="true" />
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Gear indicator (manual gearbox)">
+    <PreferenceCategory app:title="Gearing (gear estimate and rev-match score)">
         <EditTextPreference
             app:key="gear_ratios"
             app:title="Gear ratios"
-            app:defaultValue="3.794,2.324,1.624,1.271,1.000,0.794"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
             app:key="final_drive"
             app:title="Final drive"
-            app:defaultValue="3.692"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
             app:key="tire_size"
             app:title="Rear tyre size"
-            app:defaultValue="275/35R19"
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 </PreferenceScreen>

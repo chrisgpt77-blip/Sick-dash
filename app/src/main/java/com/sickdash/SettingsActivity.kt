@@ -15,9 +15,11 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.sickdash.data.CarPreset
 import com.sickdash.data.DashConfig
 import com.sickdash.data.Source
 import com.sickdash.service.ConnectionManager
+import com.sickdash.ui.Theme
 
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +37,16 @@ class SettingsActivity : AppCompatActivity() {
                 entries = Source.entries.map { it.label }.toTypedArray()
                 entryValues = Source.entries.map { it.key }.toTypedArray()
                 if (value == null) value = Source.DEMO.key
+            }
+            findPreference<ListPreference>("car")?.apply {
+                entries = CarPreset.entries.map { it.label }.toTypedArray()
+                entryValues = CarPreset.entries.map { it.key }.toTypedArray()
+                if (value == null) value = CarPreset.GR86.key
+            }
+            findPreference<ListPreference>("theme")?.apply {
+                entries = Theme.ALL.map { it.name }.toTypedArray()
+                entryValues = Theme.ALL.map { it.key }.toTypedArray()
+                if (value == null) value = CarPreset.of(preferenceManager.sharedPreferences?.getString("car", null)).theme
             }
             fillBluetoothDevices()
             for (key in listOf("tcp_port", "redline", "shift_rpm", "max_rpm", "usb_baud")) {
@@ -97,6 +109,12 @@ class SettingsActivity : AppCompatActivity() {
 
         override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
             updateVisibility()
+            if (prefs != null && (key == "car" || key == "transmission")) {
+                DashConfig.applyPreset(prefs, CarPreset.of(prefs.getString("car", null)), prefs.getString("transmission", "mt") == "at")
+                // Re-read the fields the preset just overwrote so the screen shows them.
+                preferenceScreen.removeAll()
+                onCreatePreferences(null, null)
+            }
             if (key in DashConfig.CONNECTION_KEYS) ConnectionManager.restart()
         }
 
