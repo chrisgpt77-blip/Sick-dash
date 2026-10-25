@@ -51,6 +51,14 @@ object VehicleData {
     /** Total updates per channel, for the Systems page's update rates. */
     val updates = LongArray(Channel.entries.size)
 
+    /**
+     * Time constants (s) for channels whose raw signal is too jumpy to show as-is. The fuel
+     * sender sloshes several percent in corners and under braking; the factory gauge damps it
+     * heavily, so we do too. A reading after a gap (a restart, maybe after filling up) is taken
+     * straight away.
+     */
+    private val smoothingS = FloatArray(Channel.entries.size).also { it[Channel.FUEL.ordinal] = 20f }
+
     const val SRC_CAN = 1
     const val SRC_OBD = 2
     const val SRC_PHONE = 3
@@ -75,7 +83,12 @@ object VehicleData {
     fun set(c: Channel, value: Float, now: Long = System.currentTimeMillis(), kind: Int = 0, id: Int = 0) {
         if (value.isNaN() || value.isInfinite()) return
         synchronized(lock) {
-            values[c.ordinal] = value
+            val tau = smoothingS[c.ordinal]
+            val last = stamps[c.ordinal]
+            values[c.ordinal] = if (tau > 0f && last != 0L && now - last in 0..10_000) {
+                val k = ((now - last) / 1000f / tau).coerceAtMost(1f)
+                values[c.ordinal] + (value - values[c.ordinal]) * k
+            } else value
             stamps[c.ordinal] = now
             updates[c.ordinal]++
             if (kind != 0) { sourceKind[c.ordinal] = kind; sourceId[c.ordinal] = id }

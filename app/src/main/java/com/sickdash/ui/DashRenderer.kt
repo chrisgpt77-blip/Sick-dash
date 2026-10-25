@@ -317,7 +317,7 @@ class DashRenderer(assets: AssetManager) {
 
     internal fun instrumentColumn(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig, gear: Int?) {
         val gap = 5f * u
-        val nominal = floatArrayOf(96f, 40f, 46f, 30f, 30f, 30f, 30f, 50f)
+        val nominal = floatArrayOf(96f, 40f, 46f, 30f, 30f, 30f, 30f, 30f, 50f)
         val k = (r.height() - gap * (nominal.size - 1)) / nominal.sum()
         var y = r.top
         fun next(i: Int): RectF { val rr = RectF(r.left, y, r.right, y + nominal[i] * k); y += nominal[i] * k + gap; return rr }
@@ -393,9 +393,13 @@ class DashRenderer(assets: AssetManager) {
         val brkRow = next(6)
         row(c, brkRow, "BRAKE", brk?.let { if (it < 2f) "OFF" else "${it.roundToInt()}%" } ?: "—", if ((brk ?: 0f) > 5f) t.primary else t.text)
         segments(c, rowBar(brkRow), 24, (brk ?: 0f) / 100f) { t.primary }
+        val fuelRow = next(7)
+        val low = fuel != null && fuel < 15f
+        row(c, fuelRow, "FUEL", fuel?.let { "${it.roundToInt()}%" } ?: "—", if (low) t.secondary else t.text)
+        segments(c, rowBar(fuelRow), 24, (fuel ?: 0f) / 100f) { if (low) t.secondary else t.text }
 
         // clutch | coolant
-        val last = next(7)
+        val last = next(8)
         val clutchBox = RectF(last.left, last.top, last.centerX() - gap / 2, last.bottom)
         val coolBox = RectF(last.centerX() + gap / 2, last.top, last.right, last.bottom)
         val clutch = s[Channel.CLUTCH]

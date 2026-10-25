@@ -45,7 +45,7 @@ The **instrument column** on the left is always visible:
 - Big glowing speed and gear boxes.
 - Segmented RPM bar that turns amber, then flashes at your shift point.
 - Status chips: SHIFT, BRAKE, CLUTCH, LAUNCH, COLD, LOW FUEL. Each lights only from real data.
-- Oil temp, steering angle, throttle and brake bars.
+- Oil temp, steering angle, and throttle, brake and fuel bars. The fuel bar turns amber below 15%.
 - Clutch IN/OUT and coolant.
 
 The **header** shows the link and its health ("■ CAN · 440 MSG/S · 22 SIGNALS · 22 VERIFIED"). It also shows LOCKED and BELT states when the car reports them, and REC while recording. The **PAGES** button opens a task switcher with every page as a card.
@@ -114,6 +114,7 @@ Notes on the decode:
 - **Tyre pressures** assume a US (psi) cluster. For a bar cluster, set the tyre `scale` to `10` in the profile editor (**Settings → Edit CAN profile**).
 - **6AT cars:** remove the `gear` signal. The app then estimates the gear from RPM and speed.
 - **Accelerometers:** the car's are switched off by default because they're coarse. The phone's sensors drive the G-meter.
+- **Fuel level** is damped over about 20 s, like the factory gauge, because the raw sender sloshes several percent in corners and under braking. A new reading after the car has been off (for example after filling up) shows straight away.
 
 The app is **read-only**. It never transmits onto the CAN bus. In OBD mode it only sends standard OBD-II requests.
 
