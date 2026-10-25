@@ -37,6 +37,33 @@ object Simulator {
         private var shiftTimer = 0f // > 0 while the clutch is in for a change
         private var nextGear = 1
 
+        // a made-up route and a made-up song, so the turn and music cards have something to show
+        private val route = listOf("Turn right onto Skyline Blvd", "Keep left at the fork", "Turn left onto Ridge Rd",
+            "At the roundabout, take the 2nd exit", "Continue onto Canyon Dr")
+        private var leg = 0
+        private var legLeftKm = 1.3f
+        private var lastDemoAt = 0L
+        private var songPos = 48_000L
+
+        private fun demoTripAndMusic(c: DashConfig, now: Long) {
+            if (now - lastDemoAt < 500) return
+            val stepMs = if (lastDemoAt == 0L) 0L else now - lastDemoAt
+            legLeftKm -= speed / 3600f * stepMs / 1000f
+            lastDemoAt = now
+            if (legLeftKm <= 0f) { leg = (leg + 1) % route.size; legLeftKm = 0.6f + (leg % 3) * 0.7f }
+            val dist = if (c.imperial) {
+                val mi = legLeftKm * 0.621371f
+                if (mi < 0.19f) "${((mi * 5280f) / 50f).toInt() * 50} ft" else "%.1f mi".format(mi)
+            } else if (legLeftKm < 1f) "${(legLeftKm * 1000f / 50f).toInt() * 50} m" else "%.1f km".format(legLeftKm)
+            Navigation.demo(Navigation.Turn(dist, route[leg], "14 min · ETA 10:42", null, now, demo = true))
+            // the dash's play / pause button works on the demo song too
+            val playing = NowPlaying.current?.takeIf { it.demo }?.playing ?: true
+            val len = 222_000L
+            if (playing) songPos = (songPos + stepMs) % len
+            NowPlaying.demo(NowPlaying.Track("Midnight Run", "Neon Apex", null, playing = playing, positionMs = songPos,
+                positionAt = android.os.SystemClock.elapsedRealtime(), speed = 0f, durationMs = len, app = "demo", demo = true))
+        }
+
         fun step(c: DashConfig, dt: Float, now: Long) {
             t += dt
             phaseTime += dt
@@ -155,6 +182,7 @@ object Simulator {
             put(Channel.LAMBDA, if (throttle > 90f) 0.86f else 1.0f + 0.01f * sin(t * 5))
             put(Channel.STFT, 1.6f * sin(t * 2))
             put(Channel.LTFT, -2.3f)
+            demoTripAndMusic(c, now)
             VehicleData.countFrame(now)
         }
     }

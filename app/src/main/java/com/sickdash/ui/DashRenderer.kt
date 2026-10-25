@@ -265,7 +265,16 @@ class DashRenderer(assets: AssetManager) {
         val a = com.sickdash.data.Analytics
         val chipX = r.left + cw + 7f * u + textWidth("${cfg.car.chassis} · SICK DASH", Fonts.mono, 9f * u, 0.28f) + 12f * u
         val room = x - chipX
-        val chip = listOf(
+        val turn = turnLine()
+        if (turn != null && room > 60f * u) {
+            // navigating: the next turn takes the chip
+            val txt = ellipsize("▶ $turn", room - 12f * u, 8f * u)
+            rect.set(chipX, y - 8f * u, chipX + textWidth(txt, Fonts.mono, 8f * u, 0.16f) + 12f * u, y + 8f * u)
+            fill.color = t.text
+            c.drawRect(rect, fill)
+            label(c, txt, chipX + 6f * u, y + 3f * u, 8f * u, t.bg)
+        }
+        val chip = if (turn != null) null else listOf(
             "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · ${a.liveSignals} SIGNALS · ${a.verifiedSignals} VERIFIED",
             "■ $src · ${"%,d".format(s.framesPerSecond)} MSG/S · ${a.verifiedSignals}/${a.liveSignals} OK",
             "■ $src · ${"%,d".format(s.framesPerSecond)}/S",
@@ -490,6 +499,8 @@ class DashRenderer(assets: AssetManager) {
         roadOffset = (roadOffset + speedMs * dt) % GRID
         val live = s.link.state == LinkState.CONNECTED || s[Channel.RPM] != null
         drawCar(c, stage, s, cfg, live, callouts = true)
+        turnCard(c, stage)
+        mediaCard(c, stage)
 
         // camera buttons and caption
         var x = stage.right - 6f * u

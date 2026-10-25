@@ -54,6 +54,7 @@ internal fun previewTitle(kind: Events.Kind): String = when (kind) {
     Events.Kind.WARNING -> "LOW FUEL"
     Events.Kind.LOCK -> "LOCKED"
     Events.Kind.RECORD -> "RECORDING"
+    Events.Kind.MEDIA -> "NOW PLAYING"
 }
 
 // =============================================================================================
@@ -220,6 +221,10 @@ internal fun DashRenderer.drawIcon(c: Canvas, kind: String, cx: Float, cy: Float
         "fuel" -> { c.drawRect(cx - 0.6f * r, cy - 0.8f * r, cx + 0.2f * r, cy + 0.9f * r, stroke); line(0.2f, -0.3f, 0.7f, 0f); line(0.7f, 0f, 0.7f, 0.6f) }
         "engine", "throttle" -> { c.drawRect(cx - 0.7f * r, cy - 0.5f * r, cx + 0.7f * r, cy + 0.6f * r, stroke); line(-0.3f, -0.5f, -0.3f, -0.85f); line(0.3f, -0.5f, 0.3f, -0.85f); line(-0.45f, -0.85f, 0.45f, -0.85f) }
         "systems", "bus" -> { for (k in 0 until 4) { val y = -0.75f + k * 0.5f; line(-0.9f, y, -0.6f, y); line(-0.35f, y, 0.9f, y) } }
+        "music" -> { // a pair of quavers
+            c.drawCircle(cx - 0.45f * r, cy + 0.6f * r, r * 0.28f, stroke); c.drawCircle(cx + 0.55f * r, cy + 0.4f * r, r * 0.28f, stroke)
+            line(-0.17f, 0.6f, -0.17f, -0.8f); line(0.83f, 0.4f, 0.83f, -1f); line(-0.17f, -0.8f, 0.83f, -1f); line(-0.17f, -0.5f, 0.83f, -0.7f)
+        }
         "g" -> { c.drawCircle(cx, cy, r, stroke); c.drawCircle(cx, cy, r * 0.5f, stroke); line(-1f, 0f, 1f, 0f); line(0f, -1f, 0f, 1f) }
         "style" -> { // a palette with three paint wells
             c.drawCircle(cx, cy, r, stroke)
@@ -250,6 +255,7 @@ internal fun tilePage(kind: String): DashRenderer.Page = when (kind) {
 }
 
 internal fun tileTitle(kind: String): String = when (kind) {
+    "music" -> "MUSIC"
     "vdc" -> "VDC"
     "shift" -> "REV MATCH"
     else -> kind.uppercase()
@@ -269,6 +275,7 @@ internal fun DashRenderer.tileValue(kind: String, s: Snapshot, cfg: DashConfig):
     "engine" -> s[Channel.OIL_TEMP]?.let { "OIL ${temps(cfg)(it)}" } ?: s[Channel.COOLANT]?.let { temps(cfg)(it) }
     "throttle" -> s[Channel.THROTTLE]?.let { "${it.roundToInt()}%" }
     "systems" -> "${Analytics.verifiedSignals}/${Analytics.liveSignals}"
+    "music" -> com.sickdash.data.NowPlaying.current?.let { (if (it.playing) "▶ " else "❚❚ ") + it.title.uppercase() }
     else -> null
 }
 
@@ -288,8 +295,10 @@ internal fun DashRenderer.driveTiles(c: Canvas, r: RectF, s: Snapshot, cfg: Dash
         drawIcon(c, kind, b.centerX(), b.top + ch * 0.36f, ir, t.text)
         display(c, tileTitle(kind), b.centerX(), b.top + ch * 0.68f, min(ch * 0.13f, 10f * u), t.text, Paint.Align.CENTER)
         val v = tileValue(kind, s, cfg)
-        label(c, v ?: "—", b.centerX(), b.bottom - ch * 0.1f, min(ch * 0.1f, 7.5f * u), if (v == null) t.faint else t.dim, Paint.Align.CENTER)
-        newHits += b to { page = target }
+        val vs = min(ch * 0.1f, 7.5f * u)
+        label(c, v?.let { ellipsize(it, b.width() - 10f * u, vs) } ?: "—", b.centerX(), b.bottom - ch * 0.1f, vs, if (v == null) t.faint else t.dim, Paint.Align.CENTER)
+        // the music tile is a play / pause button; the others open their page
+        newHits += b to { if (kind == "music") com.sickdash.data.NowPlaying.playPause() else page = target }
     }
 }
 

@@ -170,7 +170,7 @@ data class DashConfig(
         }
 
         /** Shortcut tiles available for the Drive page. */
-        val TILE_KINDS = listOf("vehicle", "timers", "clutch", "dyno", "vdc", "shift", "diff", "tyres", "fuel", "engine", "throttle", "systems")
+        val TILE_KINDS = listOf("vehicle", "timers", "clutch", "dyno", "vdc", "shift", "diff", "tyres", "fuel", "engine", "throttle", "systems", "music")
         val DEFAULT_TILES = listOf("vehicle", "timers", "clutch", "dyno", "vdc", "shift")
 
         private fun colour(s: String?): Int? = s?.takeIf { it.isNotBlank() }?.let {

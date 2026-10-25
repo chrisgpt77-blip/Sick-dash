@@ -13,6 +13,8 @@ import com.sickdash.can.UsbSerialTransport
 import com.sickdash.data.DashConfig
 import com.sickdash.data.GSensor
 import com.sickdash.data.LinkState
+import com.sickdash.data.Navigation
+import com.sickdash.data.NowPlaying
 import com.sickdash.data.Simulator
 import com.sickdash.data.Source
 import com.sickdash.data.VehicleData
@@ -83,7 +85,7 @@ object ConnectionManager {
             var transport: Transport? = null
             try {
                 if (cfg.source == Source.DEMO) {
-                    Simulator.run { DashConfig.get(ctx) }
+                    try { Simulator.run { DashConfig.get(ctx) } } finally { Navigation.clearDemo(); NowPlaying.clearDemo() }
                 } else {
                     val t = createTransport(ctx, cfg).also { transport = it }
                     t.open()

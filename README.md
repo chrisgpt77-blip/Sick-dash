@@ -146,6 +146,23 @@ Car-screen controls:
 - **Map pan button:** drag to orbit the car.
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
 
+## Spotify and Google Maps
+
+![Drive page with the next turn and now playing (demo)](docs/screenshots/demo_drive_wide_1920x720.png)
+
+The Drive page shows what's playing on the phone, with album art, a progress bar and previous/play-pause/next buttons. It works with Spotify, YouTube Music and any other player, because it reads Android's media sessions. A **Music** tile can also go beside the car (pick it on the Style page); tapping it plays or pauses. A "NOW PLAYING" pop-up announces each new track.
+
+While Google Maps is navigating, the next turn shows as a card on the Drive page (arrow, distance, instruction, ETA). On every other page it replaces the link chip in the header, e.g. `▶ 0.3 MI · TURN RIGHT ONTO MAIN ST`. It's read from Maps' turn-by-turn notification. Maps doesn't document that notification, so if a Maps update changes its layout the card may show the wrong text or nothing.
+
+**Turn it on:** Settings → **Show Spotify and Google Maps on the dash** → switch on Sick Dash. This gives Sick Dash notification access, which Android requires for both. Sick Dash only looks at Maps' navigation notification and the media sessions; it ignores every other notification and stores nothing. On Android 13 and later, Android greys the switch out for apps installed from an APK: first open App info for Sick Dash → ⋮ → **Allow restricted settings**.
+
+**Limits on Android Auto:**
+- Sick Dash can't draw Google Maps' own map. The map stays in the Maps app.
+- Sick Dash and Google Maps are both navigation apps, and Android Auto shows one at a time full-screen. Android Auto's split screen can still show Spotify's media card next to Sick Dash.
+- Whether Maps' turn notification reaches the phone while Maps is navigating on the car screen hasn't been tested yet. The setup that's expected to work best is the reel's: Sick Dash on a phone or tablet on the dash, with Android Auto running Google Maps and Spotify on the car screen.
+
+In demo mode, a made-up route and song show so you can see both cards.
+
 ## Drive logs
 
 Tap **RECORD** on the Timers page to log every signal to CSV at 20 Hz. Tap again to stop. To send the newest log anywhere (Drive, email, a spreadsheet), use **Settings → Share latest drive log**. Logs are kept in the app's own storage, under `Android/data/com.sickdash/files/logs`.

@@ -28,6 +28,7 @@ import com.sickdash.data.DashConfig
 import com.sickdash.data.Recorder
 import com.sickdash.data.Source
 import com.sickdash.service.ConnectionManager
+import com.sickdash.service.NotificationWatcher
 import com.sickdash.ui.Theme
 
 class SettingsActivity : AppCompatActivity() {
@@ -72,6 +73,9 @@ class SettingsActivity : AppCompatActivity() {
                 startActivity(Intent(requireContext(), SnifferActivity::class.java)); true
             }
             findPreference<Preference>("share_log")?.setOnPreferenceClickListener { shareLatestLog(); true }
+            findPreference<Preference>("notification_access")?.setOnPreferenceClickListener {
+                startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)); true
+            }
             updateVisibility()
         }
 
@@ -100,6 +104,12 @@ class SettingsActivity : AppCompatActivity() {
             pref.entries = names.toTypedArray()
             pref.entryValues = addresses.toTypedArray()
             pref.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
+
+        private fun showNotificationAccess() {
+            findPreference<Preference>("notification_access")?.summary =
+                if (NotificationWatcher.allowed(requireContext())) "On: now playing and Google Maps' next turn show on the dash"
+                else "Tap, then turn on Sick Dash. If Android greys it out, go to App info → ⋮ → Allow restricted settings first."
         }
 
         private fun shareLatestLog() {
@@ -183,6 +193,7 @@ class SettingsActivity : AppCompatActivity() {
         override fun onResume() {
             super.onResume()
             preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
+            showNotificationAccess()
         }
 
         override fun onPause() {

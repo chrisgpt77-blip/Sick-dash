@@ -2,7 +2,7 @@ package com.sickdash.data
 
 /** Things worth a pop-up on the HUD: engine start, a scored shift, a launch result, clutch slip… */
 object Events {
-    enum class Kind { BOOT, START, SHIFT, LAUNCH, RESULT, SLIP, OVER_REV, WARNING, LOCK, RECORD }
+    enum class Kind { BOOT, START, SHIFT, LAUNCH, RESULT, SLIP, OVER_REV, WARNING, LOCK, RECORD, MEDIA }
 
     class Event(val kind: Kind, val title: String, val sub: String, val at: Long, val strong: Boolean = false)
 

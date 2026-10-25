@@ -186,6 +186,10 @@ class DashScreenshotTest {
         shot("timers_1280x720", 1280, 720, DashRenderer.Page.TIMERS, sim = 300)
         shot("demo_drive_1280x720", 1280, 720, DashRenderer.Page.DRIVE, sim = 200)
         shot("body_demo_1280x720", 1280, 720, DashRenderer.Page.BODY, sim = 260)
+        PreferenceManager.getDefaultSharedPreferences(ctx).edit().putString("dash_tiles", "vehicle,music,clutch,dyno,vdc,shift").commit()
+        shot("demo_drive_wide_1920x720", 1920, 720, DashRenderer.Page.DRIVE, sim = 90, theme = "wrblue")
+        shot("demo_shift_nav_1280x720", 1280, 720, DashRenderer.Page.SHIFT, sim = 30)
+        PreferenceManager.getDefaultSharedPreferences(ctx).edit().remove("dash_tiles").commit()
         shot("body_demo_800x480", 800, 480, DashRenderer.Page.BODY, sim = 40)
     }
 }
