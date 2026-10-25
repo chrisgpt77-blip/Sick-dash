@@ -83,7 +83,7 @@ The app is **read-only**. It never transmits onto the CAN bus. In OBD mode it on
 
 ## Install
 
-1. **Get the APK:** open the repo's **Actions** tab, then the latest **Build APK** run, then download `SickDash-apk`. Install `app-debug.apk` on your phone (allow "install unknown apps").
+1. **Get the APK** from the [Releases page](../../releases): `SickDash-x.y.z.apk`. Open it on your phone and allow "install unknown apps". If you installed a debug build before, uninstall it first, because it's signed with a different key.
 2. **Let Android Auto show it.** You only do this once:
    1. Open the Android Auto settings and tap **Version** about 10 times.
    2. Tap ⋮ → **Developer settings** and tick **Unknown sources**.
@@ -107,6 +107,24 @@ Car-screen controls:
 - **Action strip:** page, theme, units, reset.
 - **Map pan button:** drag to orbit the car.
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
+
+## Releases
+
+Signed APKs are published on the [Releases page](../../releases). The **Release** workflow builds, tests, signs and publishes one whenever a `v*` tag is pushed:
+
+```
+git tag v1.0.1 && git push origin v1.0.1
+```
+
+The signing key is never stored in this (public) repo. The workflow reads it from four repository secrets (**Settings → Secrets and variables → Actions**):
+- `SICKDASH_KEYSTORE_BASE64`: the keystore file, base64-encoded.
+- `SICKDASH_KEYSTORE_PASSWORD`
+- `SICKDASH_KEY_ALIAS`
+- `SICKDASH_KEY_PASSWORD`
+
+Keep using the same key: Android only installs an update over an app signed with the same key. Release builds only accept Android Auto (and Android Automotive) as hosts, via the car app library's allowlist of Google signatures. Debug builds accept any host, for the Desktop Head Unit and testing.
+
+To sign locally, set `SICKDASH_KEYSTORE` (path), `SICKDASH_KEYSTORE_PASSWORD`, `SICKDASH_KEY_ALIAS` and `SICKDASH_KEY_PASSWORD`, then run `./gradlew assembleRelease`.
 
 ## Build
 

@@ -11,15 +11,29 @@ android {
         applicationId = "com.sickdash"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (System.getenv("SICKDASH_VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("SICKDASH_VERSION_NAME") ?: "1.0.0"
+    }
+
+    // Release signing comes from the environment (CI secrets or your shell), never from the repo:
+    // SICKDASH_KEYSTORE (path), SICKDASH_KEYSTORE_PASSWORD, SICKDASH_KEY_ALIAS, SICKDASH_KEY_PASSWORD.
+    val releaseKeystore = System.getenv("SICKDASH_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("SICKDASH_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SICKDASH_KEY_ALIAS")
+                keyPassword = System.getenv("SICKDASH_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sideload-friendly: release is signed with the debug key unless you add your own.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without a release key (e.g. a fork's CI), fall back to the debug key so it still builds.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

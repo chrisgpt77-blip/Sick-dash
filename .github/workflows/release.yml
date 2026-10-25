@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version from tag
+        run: |
+          name="${GITHUB_REF_NAME#v}"
+          IFS=. read -r major minor patch <<< "${name%%-*}"
+          echo "SICKDASH_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "SICKDASH_VERSION_CODE=$(( ${major:-0} * 10000 + ${minor:-0} * 100 + ${patch:-0} ))" >> "$GITHUB_ENV"
+
+      - name: Release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SICKDASH_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SICKDASH_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SICKDASH_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SICKDASH_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "SICKDASH_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "SICKDASH_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "SICKDASH_KEY_ALIAS=$KEY_ALIAS"
+              echo "SICKDASH_KEY_PASSWORD=$KEY_PASSWORD"
+              echo "SIGNED_WITH=release key"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::error::Add the SICKDASH_KEYSTORE_BASE64 / _PASSWORD / KEY_ALIAS / KEY_PASSWORD repository secrets first (see README → Releases)."
+            exit 1
+          fi
+
+      - name: Test and build
+        run: ./gradlew testDebugUnitTest assembleRelease
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="SickDash-${SICKDASH_VERSION_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          sha=$(sha256sum "$apk" | cut -d' ' -f1)
+          cat > notes.md <<NOTES
+          Sick Dash ${SICKDASH_VERSION_NAME}: GR86 / BRZ HUD for Android Auto.
+
+          **Install:** download \`$apk\` below, open it on your phone (allow installs from your browser/files app).
+          Then in Android Auto: Settings → tap *Version* ~10 times → ⋮ → Developer settings → enable **Unknown sources**.
+
+          Signed with: ${SIGNED_WITH}
+          SHA-256: \`$sha\`
+          NOTES
+          gh release create "$GITHUB_REF_NAME" "$apk" --title "Sick Dash ${SICKDASH_VERSION_NAME}" --notes-file notes.md
