@@ -73,6 +73,15 @@ object VehicleData {
     /** Which module sends which CAN ids (from the CAN profile), for the boot-time node check. */
     @Volatile var nodes: Map<String, List<Int>> = emptyMap()
 
+    /**
+     * While true, raw-CAN sessions pass every id instead of only the profile's (the adapter's
+     * hardware filters are left open). Set by the signal-learning wizard; takes effect on reconnect.
+     */
+    @Volatile var listenAll = false
+
+    /** Sees every raw frame as it arrives; the signal-learning wizard records from it. */
+    @Volatile var frameTap: ((CanFrame) -> Unit)? = null
+
     /** What the live link turned out to be: "CAN", "OBD", "DEMO" or "ELM" while it is still deciding. */
     @Volatile var linkMode = "—"
 
@@ -133,6 +142,7 @@ object VehicleData {
             e.lastSeen = now
         }
         countFrame(now)
+        frameTap?.invoke(frame)
     }
 
     /** Counts a received message (raw frame or OBD reply) for the "msgs/s" readout. */

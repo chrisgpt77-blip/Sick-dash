@@ -68,6 +68,10 @@
             app:title="Edit CAN profile"
             app:summary="Which CAN ids / bytes feed RPM, speed, temps… (raw CAN modes)" />
         <Preference
+            app:key="learn_signals"
+            app:title="Learn body signals"
+            app:summary="Find doors, locks, belt, lights, indicators, wipers, VDC and cruise on your car's bus, step by step" />
+        <Preference
             app:key="open_sniffer"
             app:title="CAN sniffer"
             app:summary="See every id on the bus live to find or verify signals" />

@@ -72,6 +72,9 @@ class SettingsActivity : AppCompatActivity() {
             findPreference<Preference>("open_sniffer")?.setOnPreferenceClickListener {
                 startActivity(Intent(requireContext(), SnifferActivity::class.java)); true
             }
+            findPreference<Preference>("learn_signals")?.setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), LearnActivity::class.java)); true
+            }
             findPreference<Preference>("share_log")?.setOnPreferenceClickListener { shareLatestLog(); true }
             findPreference<Preference>("notification_access")?.setOnPreferenceClickListener {
                 startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)); true

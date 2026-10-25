@@ -148,12 +148,13 @@ class Elm327Session(
         if (dauntless && profile.bitrate == 500_000) {
             command("ATTP 81") // raw CAN, 500k
             command("DD CRA")
-            for (id in profile.ids.sorted()) command("DD CRA %03X".format(id))
+            // one hardware filter per id the profile decodes, unless the learning wizard wants everything
+            if (!VehicleData.listenAll) for (id in profile.ids.sorted()) command("DD CRA %03X".format(id))
             monitorCmd = "DD MF"
         } else {
             command("ATSP6")
             command("ATCAF0")
-            LineParsers.elmFilterFor(profile.ids)?.let { (filter, mask) ->
+            if (!VehicleData.listenAll) LineParsers.elmFilterFor(profile.ids)?.let { (filter, mask) ->
                 command("ATCF%03X".format(filter))
                 command("ATCM%03X".format(mask))
             }

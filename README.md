@@ -72,7 +72,22 @@ The pages are tabs along the bottom (two rows on a phone held upright). On the c
 | **Bus** | Live CAN traffic: every ID, its rate and its bytes, with changing bytes lit. |
 | **Style** | Theme presets (Akasaka, Gazoo, WR Blue, Cyberpunk, Midnight, Matrix, Sunset, Ice, Daylight) with a live preview. Colour pickers for the primary, secondary and car-line colours. Buttons to play each animation. The six Drive-page tiles. |
 
-Nothing is faked. A signal the car doesn't send (or that isn't in the CAN profile yet) shows as NOT MAPPED. On the GR86, doors, trunk, locks, belt, headlights, turn signals, wipers, odometer, VDC, track mode, cruise and park brake have no publicly documented IDs yet. Range is an estimate from fuel left and this drive's economy (or the car's rated economy until there's enough data). Fuel used comes from mass airflow when the car reports it (OBD), otherwise from the fuel level dropping; the instant economy figure needs mass airflow. Find them with the **CAN sniffer** and add them to the profile, and they light up everywhere. **Demo** mode simulates all of them, so you can see every feature without a car.
+Nothing is faked. A signal the car doesn't send (or that isn't in the CAN profile yet) shows as NOT MAPPED. On the GR86, doors, trunk, locks, belt, headlights, turn signals, wipers, odometer, VDC, track mode, cruise and park brake have no publicly documented IDs yet. Range is an estimate from fuel left and this drive's economy (or the car's rated economy until there's enough data). Fuel used comes from mass airflow when the car reports it (OBD), otherwise from the fuel level dropping; the instant economy figure needs mass airflow.  **Demo** mode simulates all of them, so you can see every feature without a car. To fill them in, use **Settings → Learn body signals** (below).
+
+### Learn body signals
+
+A step-by-step wizard that finds your car's body signals on the bus:
+- driver and passenger doors, trunk, door locks, seatbelt and park brake
+- headlights, turn signals and hazards, and wipers
+- VDC, Track mode and cruise
+
+1. Park with the engine running (or the ignition on) and the adapter on the ASC or DCM connector. Read mode must be Auto or Raw CAN.
+2. Open **Settings → Learn body signals**. While it's open, the adapter's ID filters are switched off so the whole bus comes through.
+3. For each control, the wizard asks you to work it a few times ("Open the driver's door" → Record, "Close all the doors" → Record, …). It records every bit on the bus while you do. A bit counts as a match when it reads the same every time the control is in the same position, and differently in different positions. The positions come in a deliberately uneven order, so a value that just creeps up over time can't pass for a switch.
+4. It shows the best match with a live reading. Work the control again and check the reading follows. Then **Use it**, try the **Next match**, or **Skip**.
+5. At the end, **Save** writes the kept signals into your CAN profile for this car, replacing any earlier ones. You can see or undo them in **Settings → Edit CAN profile**.
+
+Some controls may not be on the connector you're using. The wizard reports those as not found rather than guessing.
 
 ## Connecting to a GR86 / BRZ
 
