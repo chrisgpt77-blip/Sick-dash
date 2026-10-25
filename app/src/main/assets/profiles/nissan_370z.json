@@ -1,0 +1,29 @@
+{
+  "name": "Nissan 370Z (Z34) - OBD port CAN, 500k",
+  "bitrate": 500000,
+  "_help": [
+    "Each signal: id (hex), start byte (0 = first), length in bytes, endian big|little,",
+    "optional signed, scale, offset, shift, mask, map {raw: value}. value = raw * scale + offset.",
+    "Channels: rpm speed coolant oil_temp intake_temp throttle battery fuel gear steering brake lat_g lon_g.",
+    "Sources: community reverse engineering of a 2010 370Z (github.com/Knio/carhack). Scales marked",
+    "'verify' are best guesses - check them in the CAN sniffer against the factory cluster and edit here.",
+    "Set \"disabled\": true to switch a signal off."
+  ],
+  "signals": [
+    { "channel": "rpm", "id": "0x180", "start": 0, "length": 2, "endian": "big", "scale": 0.125,
+      "note": "ECM. Same value as 0x1F9 bytes 2-3; raw/8 = rpm (idle ~680)" },
+    { "channel": "throttle", "id": "0x180", "start": 5, "length": 1, "scale": 0.392157,
+      "note": "Accelerator pedal, raw/255*100 %" },
+    { "channel": "speed", "id": "0x354", "start": 0, "length": 2, "endian": "big", "scale": 0.01,
+      "note": "ABS/VDC vehicle speed km/h - verify scale against the cluster" },
+    { "channel": "brake", "id": "0x354", "start": 6, "length": 1, "shift": 4, "mask": 1,
+      "note": "4 = released, 20 = pressed" },
+    { "channel": "coolant", "id": "0x551", "start": 0, "length": 1, "offset": -40,
+      "note": "Coolant temp, raw - 40 = deg C - verify offset" },
+    { "channel": "gear", "id": "0x421", "start": 0, "length": 1,
+      "map": { "16": -1, "24": 0, "128": 1, "136": 2, "144": 3, "152": 4, "160": 5, "168": 6 },
+      "note": "6MT lever position. Remove this entry to fall back to rpm/speed gear estimation" },
+    { "channel": "steering", "id": "0x002", "start": 0, "length": 2, "endian": "little", "signed": true, "scale": 0.1,
+      "note": "Steering angle deg, byte 1 is the high byte - verify sign/scale" }
+  ]
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sick Dash</string>
+
+    <string-array name="elm_mode_names">
+        <item>OBD-II (works on any car)</item>
+        <item>Raw CAN monitor (uses CAN profile)</item>
+    </string-array>
+    <string-array name="elm_mode_values">
+        <item>obd</item>
+        <item>monitor</item>
+    </string-array>
+
+    <string-array name="unit_names">
+        <item>MPH / °F</item>
+        <item>km/h / °C</item>
+    </string-array>
+    <string-array name="unit_values">
+        <item>imperial</item>
+        <item>metric</item>
+    </string-array>
+
+    <string-array name="accent_names">
+        <item>Cyan</item>
+        <item>Nismo red</item>
+        <item>Orange</item>
+        <item>Lime</item>
+        <item>Purple</item>
+        <item>White</item>
+    </string-array>
+    <string-array name="accent_values">
+        <item>#00E5FF</item>
+        <item>#FF1E3C</item>
+        <item>#FF8A00</item>
+        <item>#B6FF00</item>
+        <item>#B04DFF</item>
+        <item>#F2F4F7</item>
+    </string-array>
+</resources>

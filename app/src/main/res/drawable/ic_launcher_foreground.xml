@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- tach arc -->
+    <path android:strokeColor="#1C222C" android:strokeWidth="6" android:strokeLineCap="round"
+        android:pathData="M36.7,71.3 A24.5,24.5 0 1,1 71.3,71.3" />
+    <path android:strokeColor="#00E5FF" android:strokeWidth="6" android:strokeLineCap="round"
+        android:pathData="M36.7,71.3 A24.5,24.5 0 0,1 54,29.5 A24.5,24.5 0 0,1 68.5,34.2" />
+    <path android:strokeColor="#FF3B30" android:strokeWidth="3"
+        android:pathData="M75.5,40.5 A27.5,27.5 0 0,1 77.5,64" />
+    <!-- needle -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round"
+        android:pathData="M54,54 L66,38" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50,54a4,4 0 1,0 8,0a4,4 0 1,0 -8,0" />
+</vector>

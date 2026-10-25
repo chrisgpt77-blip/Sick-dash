@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#06070A">
+
+    <com.sickdash.ui.DashView
+        android:id="@+id/dash"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:background="#E60E1117"
+        android:orientation="horizontal"
+        android:padding="4dp"
+        android:visibility="gone">
+
+        <Button android:id="@+id/btn_page" style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Dash / Race" android:textColor="#ECF0F5" />
+        <Button android:id="@+id/btn_reset" style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Reset G" android:textColor="#ECF0F5" />
+        <Button android:id="@+id/btn_sniffer" style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Sniffer" android:textColor="#ECF0F5" />
+        <Button android:id="@+id/btn_settings" style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Settings" android:textColor="#00E5FF" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="Connection">
+        <ListPreference
+            app:key="source"
+            app:title="Data source"
+            app:defaultValue="demo"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:key="bt_device"
+            app:title="Bluetooth adapter" />
+        <EditTextPreference
+            app:key="tcp_host"
+            app:title="Adapter IP address"
+            app:summary="Blank = default (ELM327 Wi-Fi 192.168.0.10, WiCAN 192.168.80.1)" />
+        <EditTextPreference
+            app:key="tcp_port"
+            app:title="Adapter TCP port"
+            app:summary="Blank = default (ELM327 35000, WiCAN slcan 3333)" />
+        <EditTextPreference
+            app:key="usb_baud"
+            app:title="USB baud rate"
+            app:defaultValue="115200"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:key="elm_mode"
+            app:title="Read mode"
+            app:defaultValue="obd"
+            app:entries="@array/elm_mode_names"
+            app:entryValues="@array/elm_mode_values"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="CAN bus">
+        <Preference
+            app:key="edit_profile"
+            app:title="Edit CAN profile"
+            app:summary="Which CAN ids / bytes feed RPM, speed, temps… (raw CAN modes)" />
+        <Preference
+            app:key="open_sniffer"
+            app:title="CAN sniffer"
+            app:summary="See every id on the bus live to find or verify signals" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Display">
+        <ListPreference
+            app:key="units"
+            app:title="Units"
+            app:defaultValue="imperial"
+            app:entries="@array/unit_names"
+            app:entryValues="@array/unit_values"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:key="accent"
+            app:title="Accent colour"
+            app:defaultValue="#00E5FF"
+            app:entries="@array/accent_names"
+            app:entryValues="@array/accent_values"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="shift_rpm"
+            app:title="Shift light RPM"
+            app:defaultValue="7000"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="redline"
+            app:title="Redline RPM"
+            app:defaultValue="7500"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="max_rpm"
+            app:title="Tach maximum RPM"
+            app:defaultValue="8000"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:key="phone_g"
+            app:title="Use phone sensors for G-meter"
+            app:summary="Mount the phone upright facing you or flat with its top toward the windscreen"
+            app:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Gear indicator (manual gearbox)">
+        <EditTextPreference
+            app:key="gear_ratios"
+            app:title="Gear ratios"
+            app:defaultValue="3.794,2.324,1.624,1.271,1.000,0.794"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="final_drive"
+            app:title="Final drive"
+            app:defaultValue="3.692"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="tire_size"
+            app:title="Rear tyre size"
+            app:defaultValue="275/35R19"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>
