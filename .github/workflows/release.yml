@@ -42,7 +42,18 @@ jobs:
           KEY_PASSWORD: ${{ secrets.SICKDASH_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            # Tolerate line breaks / spaces picked up when pasting the secret.
+            clean=$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n')
+            echo "Keystore secret: ${#clean} base64 characters after removing whitespace (expected 5712)."
+            if ! printf '%s' "$clean" | base64 -d > "$RUNNER_TEMP/release.jks" 2>/dev/null; then
+              bad=$(printf '%s' "$clean" | tr -d 'A-Za-z0-9+/=' | head -c 20 | od -An -c | tr -s ' ')
+              echo "::error::SICKDASH_KEYSTORE_BASE64 is not valid base64 (unexpected characters:${bad:- none}; length ${#clean}). Re-paste it as one line."
+              exit 1
+            fi
+            if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+              echo "::error::Keystore decoded (sha256 $(sha256sum "$RUNNER_TEMP/release.jks" | cut -c1-12)…, expected 90ebb818daa8…) but the password or alias doesn't open it. Check SICKDASH_KEYSTORE_PASSWORD and SICKDASH_KEY_ALIAS."
+              exit 1
+            fi
             {
               echo "SICKDASH_KEYSTORE=$RUNNER_TEMP/release.jks"
               echo "SICKDASH_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
