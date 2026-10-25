@@ -115,7 +115,7 @@ Signed APKs are published on the [Releases page](../../releases). The **Release*
 - Push a `v*` tag: `git tag v1.0.1 && git push origin v1.0.1`.
 
 The signing key is never stored in this (public) repo. The workflow reads it from four repository secrets (**Settings → Secrets and variables → Actions**):
-- `SICKDASH_KEYSTORE_BASE64`: the keystore file, base64-encoded.
+- `SICKDASH_KEYSTORE_BASE64`: the keystore file, base64-encoded. It can be split across `SICKDASH_KEYSTORE_BASE64`, `_2` and `_3` if one long value is hard to paste.
 - `SICKDASH_KEYSTORE_PASSWORD`
 - `SICKDASH_KEY_ALIAS`
 - `SICKDASH_KEY_PASSWORD`
