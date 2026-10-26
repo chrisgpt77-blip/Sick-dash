@@ -161,7 +161,7 @@ Car-screen controls:
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
 - **Full screen:** the dash fills the whole car screen, and Android Auto's buttons float over it, hiding when you're not touching the screen. If your car's buttons never hide and cover something, turn off **Settings → Fill the car screen** to keep the dash clear of them.
 - **Sharpness:** Android Auto often streams to the car at 800×480. In the Android Auto settings on your phone, tap **Version** about 10 times, then ⋮ → **Developer settings** → **Video resolution** → **Allow up to 1280x720**, and reconnect. If it still looks soft, turn off **Settings → Glow effects** for crisper text and lines.
-- **Speed:** the Systems page header shows how fast the dash is drawing on the screen you're looking at (FPS and milliseconds per frame).
+- **Speed:** **Settings → Show performance** puts a readout at the top of the dash: frames per second, draw time, on the car screen the time spent waiting for and sending to Android Auto's video stream, how long a tap takes to reach the screen inside Sick Dash, and the resolution Android Auto gave the app. The Systems page header also shows FPS and draw time.
 
 ## Spotify and Google Maps
 

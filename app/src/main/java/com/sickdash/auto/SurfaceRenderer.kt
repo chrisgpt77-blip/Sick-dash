@@ -116,7 +116,9 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
         synchronized(lock) {
             val s = surface ?: return
             if (!s.isValid || width == 0) return
+            val l0 = SystemClock.uptimeMillis()
             val canvas = try { s.lockHardwareCanvas() } catch (e: Exception) { return }
+            dash.lockMs += ((SystemClock.uptimeMillis() - l0) - dash.lockMs) * 0.1f
             try {
                 canvas.drawColor(android.graphics.Color.rgb(6, 7, 10))
                 val cfg = DashConfig.get(carContext)
@@ -128,7 +130,9 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
                 else RectF(0f, 0f, width.toFloat(), height.toFloat())
                 dash.draw(canvas, area, VehicleData.snapshot(), cfg)
             } finally {
+                val p0 = SystemClock.uptimeMillis()
                 s.unlockCanvasAndPost(canvas)
+                dash.postMs += ((SystemClock.uptimeMillis() - p0) - dash.postMs) * 0.1f
             }
         }
     }

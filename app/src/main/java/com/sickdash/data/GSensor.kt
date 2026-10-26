@@ -5,6 +5,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.HandlerThread
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -14,6 +16,7 @@ import kotlin.math.sqrt
  */
 object GSensor : SensorEventListener {
     private var manager: SensorManager? = null
+    private var thread: HandlerThread? = null
     private val gravity = FloatArray(3)
     private var hasGravity = false
     private var lat = 0f
@@ -24,14 +27,20 @@ object GSensor : SensorEventListener {
         val sm = context.getSystemService(SensorManager::class.java) ?: return
         val lin = sm.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION) ?: return
         val grav = sm.getDefaultSensor(Sensor.TYPE_GRAVITY) ?: return
-        sm.registerListener(this, lin, SensorManager.SENSOR_DELAY_GAME)
-        sm.registerListener(this, grav, SensorManager.SENSOR_DELAY_GAME)
+        // on their own thread, so ~100 events a second don't queue in front of taps on the main thread
+        val t = HandlerThread("g-sensor").also { it.start() }
+        val h = Handler(t.looper)
+        sm.registerListener(this, lin, SensorManager.SENSOR_DELAY_GAME, h)
+        sm.registerListener(this, grav, SensorManager.SENSOR_DELAY_GAME, h)
+        thread = t
         manager = sm
     }
 
     fun stop() {
         manager?.unregisterListener(this)
         manager = null
+        thread?.quitSafely()
+        thread = null
     }
 
     override fun onSensorChanged(e: SensorEvent) {

@@ -94,6 +94,8 @@ data class DashConfig(
     val colorCar: Int? = null,
     /** Android Auto: draw under the host's floating buttons rather than shrinking clear of them. */
     val fillCarScreen: Boolean = true,
+    /** Show frame rate, draw time and tap latency on screen. */
+    val perfOverlay: Boolean = false,
     /** Glow halos around text and lines. */
     val glow: Boolean = true,
     /** The six shortcut tiles on the Drive page, in order. */
@@ -157,6 +159,7 @@ data class DashConfig(
                 colorCar = colour(p.getString("color_car", null)),
                 fillCarScreen = p.getBoolean("fill_car_screen", true),
                 glow = p.getBoolean("glow", true),
+                perfOverlay = p.getBoolean("perf_overlay", false),
                 tiles = p.getString("dash_tiles", null)?.split(',')?.filter { it in TILE_KINDS }?.take(6)
                     ?.let { if (it.size == 6) it else null } ?: DEFAULT_TILES,
             )

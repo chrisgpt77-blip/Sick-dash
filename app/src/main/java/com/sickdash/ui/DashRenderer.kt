@@ -83,6 +83,7 @@ class DashRenderer(assets: AssetManager) {
 
     /** Hit-test a tap against the tabs and buttons drawn last frame. */
     fun handleTap(x: Float, y: Float): Boolean {
+        tapAt = System.nanoTime()
         if (booting) { bootSkip = true; return true }
         // later hits are drawn on top (overlays), so they win
         for ((r, action) in hits.asReversed()) if (r.contains(x, y)) { action(); return true }
@@ -139,6 +140,12 @@ class DashRenderer(assets: AssetManager) {
     @Volatile var fps = 0f; private set
     @Volatile var frameMs = 0f; private set
     private var lastFrameNanos = 0L
+    @Volatile private var tapAt = 0L
+    /** From a tap reaching the dash to the frame showing its result being drawn. */
+    @Volatile var tapMs = 0f; private set
+    /** Set by the Android Auto host: time spent waiting for a buffer from the car's video stream, and handing the frame over. */
+    @Volatile var lockMs = 0f
+    @Volatile var postMs = 0f
 
     fun draw(canvas: Canvas, area: RectF, s: Snapshot, cfg: DashConfig) {
         val t0 = System.nanoTime()
@@ -148,7 +155,26 @@ class DashRenderer(assets: AssetManager) {
         }
         lastFrameNanos = t0
         drawFrame(canvas, area, s, cfg)
-        frameMs += ((System.nanoTime() - t0) / 1e6f - frameMs) * 0.1f
+        val t1 = System.nanoTime()
+        frameMs += ((t1 - t0) / 1e6f - frameMs) * 0.1f
+        val tap = tapAt
+        if (tap != 0L) { tapMs = (t1 - tap) / 1e6f; tapAt = 0L }
+        if (cfg.perfOverlay) perfOverlay(canvas, area)
+    }
+
+    /** Settings → Show performance: where the time goes on this screen. */
+    private fun perfOverlay(c: Canvas, area: RectF) {
+        val parts = mutableListOf("%.0f FPS".format(fps), "DRAW %.0f MS".format(frameMs))
+        if (carScreen) parts += "WAIT %.0f · SEND %.0f MS".format(lockMs, postMs)
+        parts += if (tapMs > 0f) "TAP → SCREEN %.0f MS".format(tapMs) else "TAP → SCREEN —"
+        parts += "${area.width().toInt()}×${area.height().toInt()}"
+        val txt = parts.joinToString("  ·  ")
+        val size = 8f * u
+        val w = textWidth(txt, Fonts.mono, size, 0.1f) + 12f * u
+        rect.set(area.centerX() - w / 2, area.top + 34f * u, area.centerX() + w / 2, area.top + 48f * u)
+        fill.color = withAlpha(t.bg, 230); c.drawRect(rect, fill)
+        stroke.color = t.secondary; stroke.strokeWidth = max(1f, 0.8f * u); c.drawRect(rect, stroke)
+        label(c, txt, rect.centerX(), rect.centerY() + size * 0.36f, size, t.secondary, Paint.Align.CENTER, 0.1f)
     }
 
     private fun drawFrame(canvas: Canvas, area: RectF, s: Snapshot, cfg: DashConfig) {

@@ -121,6 +121,11 @@
             app:summary="Soft halos around text and lines. Turn off for sharper edges if the car screen looks blurry."
             app:defaultValue="true" />
         <SwitchPreferenceCompat
+            app:key="perf_overlay"
+            app:title="Show performance"
+            app:summary="Frame rate, draw time and how long a tap takes to reach the screen, shown at the top of the dash"
+            app:defaultValue="false" />
+        <SwitchPreferenceCompat
             app:key="fill_car_screen"
             app:title="Fill the car screen"
             app:summary="Draw under Android Auto's buttons, which hide when you're not touching the screen. Turn off to keep the dash clear of them."
