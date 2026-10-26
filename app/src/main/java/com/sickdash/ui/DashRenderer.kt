@@ -96,6 +96,8 @@ class DashRenderer(assets: AssetManager) {
     internal val path = Path()
     internal val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
     internal var u = 1f
+    /** Glow halos on text and lines; off gives sharper edges on low-resolution car screens. */
+    internal var glowOn = true
     internal var newHits = ArrayList<Pair<RectF, () -> Unit>>()
     @Volatile internal var hits: List<Pair<RectF, () -> Unit>> = emptyList()
 
@@ -127,12 +129,29 @@ class DashRenderer(assets: AssetManager) {
 
     // =========================================================================================
 
+    /** How fast the dash is drawing on this screen, for the Systems page. */
+    @Volatile var fps = 0f; private set
+    @Volatile var frameMs = 0f; private set
+    private var lastFrameNanos = 0L
+
     fun draw(canvas: Canvas, area: RectF, s: Snapshot, cfg: DashConfig) {
+        val t0 = System.nanoTime()
+        if (lastFrameNanos != 0L) {
+            val gap = (t0 - lastFrameNanos) / 1e9f
+            if (gap in 0.001f..2f) fps += (1f / gap - fps) * 0.1f
+        }
+        lastFrameNanos = t0
+        drawFrame(canvas, area, s, cfg)
+        frameMs += ((System.nanoTime() - t0) / 1e6f - frameMs) * 0.1f
+    }
+
+    private fun drawFrame(canvas: Canvas, area: RectF, s: Snapshot, cfg: DashConfig) {
         t = Theme.of(cfg.themeKey).with(cfg.colorPrimary, cfg.colorSecondary, cfg.colorCar)
         val dt = if (lastFrame == 0L) 0.033f else ((s.now - lastFrame) / 1000f).coerceIn(0f, 0.2f)
         lastFrame = s.now
         newHits = ArrayList()
 
+        glowOn = cfg.glow
         rpmShown += ((s[Channel.RPM] ?: 0f) - rpmShown) * 0.45f
         speedShown += ((s[Channel.SPEED] ?: 0f) - speedShown) * 0.35f
         latShown += ((s[Channel.LAT_G, 1000] ?: 0f) - latShown) * 0.3f
@@ -590,60 +609,87 @@ class DashRenderer(assets: AssetManager) {
     internal val pa = FloatArray(2)
     internal val pb = FloatArray(2)
 
-    /** Adds world-space segments to [into], clipping any that cross behind the camera. */
-    internal fun addSegments(p: Proj, segs: FloatArray, into: Path, transform: ((FloatArray) -> Unit)? = null) {
-        val a = FloatArray(3)
-        val b = FloatArray(3)
-        var i = 0
-        while (i + 5 < segs.size) {
-            a[0] = segs[i]; a[1] = segs[i + 1]; a[2] = segs[i + 2]
-            b[0] = segs[i + 3]; b[1] = segs[i + 4]; b[2] = segs[i + 5]
-            i += 6
-            transform?.invoke(a); transform?.invoke(b)
-            toCam(p, a[0], a[1], a[2], ca)
-            toCam(p, b[0], b[1], b[2], cb)
-            if (ca[2] < NEAR && cb[2] < NEAR) continue
-            if (ca[2] < NEAR || cb[2] < NEAR) {
-                val (near, far) = if (ca[2] < NEAR) ca to cb else cb to ca
-                val k = (NEAR - far[2]) / (near[2] - far[2])
-                for (j in 0..2) near[j] = far[j] + (near[j] - far[j]) * k
-            }
-            into.moveTo(p.ox + p.f * ca[0] / ca[2], p.oy - p.f * ca[1] / ca[2])
-            into.lineTo(p.ox + p.f * cb[0] / cb[2], p.oy - p.f * cb[1] / cb[2])
+    /** A batch of 2D line segments (x0, y0, x1, y1 …), reused frame to frame and drawn in one call. */
+    internal class Lines {
+        var data = FloatArray(1024)
+        var size = 0
+        fun clear() { size = 0 }
+        fun add(x0: Float, y0: Float, x1: Float, y1: Float) {
+            if (size + 4 > data.size) data = data.copyOf(data.size * 2)
+            data[size] = x0; data[size + 1] = y0; data[size + 2] = x1; data[size + 3] = y1
+            size += 4
         }
     }
 
-    /** Splits segments into near / middle / far paths by depth relative to [centre], for depth fading. */
-    internal fun addSegmentsByDepth(p: Proj, segs: FloatArray, into: Array<Path>, centre: Float, transform: ((FloatArray) -> Unit)? = null) {
-        val one = FloatArray(6)
-        val tmp = Path()
+    // The wireframe is drawn as line batches, not Paths: a Path that changes every frame has to be
+    // re-rasterised by the GPU renderer each time, which made the Drive page slow on phones.
+    internal val gridLines = Lines()
+    internal val bodyLines = arrayOf(Lines(), Lines(), Lines())
+    internal val headLines = Lines()
+    internal val tailLines = Lines()
+    private val sa = FloatArray(3)
+    private val sb = FloatArray(3)
+
+    /** Projects one world-space segment into [into], clipping it at the near plane. */
+    private fun addSegment(p: Proj, ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, into: Lines) {
+        toCam(p, ax, ay, az, ca)
+        toCam(p, bx, by, bz, cb)
+        if (ca[2] < NEAR && cb[2] < NEAR) return
+        if (ca[2] < NEAR || cb[2] < NEAR) {
+            val (near, far) = if (ca[2] < NEAR) ca to cb else cb to ca
+            val k = (NEAR - far[2]) / (near[2] - far[2])
+            for (j in 0..2) near[j] = far[j] + (near[j] - far[j]) * k
+        }
+        into.add(p.ox + p.f * ca[0] / ca[2], p.oy - p.f * ca[1] / ca[2], p.ox + p.f * cb[0] / cb[2], p.oy - p.f * cb[1] / cb[2])
+    }
+
+    /** Adds world-space segments to [into], clipping any that cross behind the camera. */
+    internal fun addSegments(p: Proj, segs: FloatArray, into: Lines, transform: ((FloatArray) -> Unit)? = null) {
         var i = 0
         while (i + 5 < segs.size) {
-            System.arraycopy(segs, i, one, 0, 6)
+            sa[0] = segs[i]; sa[1] = segs[i + 1]; sa[2] = segs[i + 2]
+            sb[0] = segs[i + 3]; sb[1] = segs[i + 4]; sb[2] = segs[i + 5]
             i += 6
-            val a = floatArrayOf(one[0], one[1], one[2])
-            val b = floatArrayOf(one[3], one[4], one[5])
-            transform?.invoke(a); transform?.invoke(b)
-            toCam(p, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, ca)
+            transform?.invoke(sa); transform?.invoke(sb)
+            addSegment(p, sa[0], sa[1], sa[2], sb[0], sb[1], sb[2], into)
+        }
+    }
+
+    /** Splits segments into near / middle / far batches by depth relative to [centre], for depth fading. */
+    internal fun addSegmentsByDepth(p: Proj, segs: FloatArray, into: Array<Lines>, centre: Float, transform: ((FloatArray) -> Unit)? = null) {
+        var i = 0
+        while (i + 5 < segs.size) {
+            sa[0] = segs[i]; sa[1] = segs[i + 1]; sa[2] = segs[i + 2]
+            sb[0] = segs[i + 3]; sb[1] = segs[i + 4]; sb[2] = segs[i + 5]
+            i += 6
+            transform?.invoke(sa); transform?.invoke(sb)
+            toCam(p, (sa[0] + sb[0]) / 2, (sa[1] + sb[1]) / 2, (sa[2] + sb[2]) / 2, ca)
             val rel = ca[2] - centre
             val bucket = when { rel < -0.35f -> 0; rel < 0.35f -> 1; else -> 2 }
-            tmp.reset()
-            addSegments(p, floatArrayOf(a[0], a[1], a[2], b[0], b[1], b[2]), tmp)
-            into[bucket].addPath(tmp)
+            addSegment(p, sa[0], sa[1], sa[2], sb[0], sb[1], sb[2], into[bucket])
         }
     }
 
-    internal fun glowPath(c: Canvas, p: Path, colour: Int, width: Float) {
+    internal fun glowLines(c: Canvas, l: Lines, colour: Int, width: Float) {
+        if (l.size == 0) return
         stroke.strokeCap = Paint.Cap.ROUND
+        if (!glowOn) {
+            // crisp: just the line, a touch heavier
+            stroke.color = colour
+            stroke.strokeWidth = width * 1.25f
+            c.drawLines(l.data, 0, l.size, stroke)
+            stroke.strokeCap = Paint.Cap.BUTT
+            return
+        }
         stroke.color = withAlpha(colour, 38)
         stroke.strokeWidth = width * 4.5f
-        c.drawPath(p, stroke)
+        c.drawLines(l.data, 0, l.size, stroke)
         stroke.color = withAlpha(colour, 80)
         stroke.strokeWidth = width * 2.2f
-        c.drawPath(p, stroke)
+        c.drawLines(l.data, 0, l.size, stroke)
         stroke.color = colour
         stroke.strokeWidth = width
-        c.drawPath(p, stroke)
+        c.drawLines(l.data, 0, l.size, stroke)
         stroke.strokeCap = Paint.Cap.BUTT
     }
 
@@ -654,18 +700,18 @@ class DashRenderer(assets: AssetManager) {
         val p = projection(r)
 
         // the floor: a grid that streams past with road speed
-        val gridPath = Path()
+        gridLines.clear()
         val ext = 9f
         var k = -ext
         while (k <= ext) {
             val xo = k - roadOffset
-            addSegments(p, floatArrayOf(xo, 0f, -ext, xo, 0f, ext), gridPath)
-            addSegments(p, floatArrayOf(-ext, 0f, k, ext, 0f, k), gridPath)
+            addSegment(p, xo, 0f, -ext, xo, 0f, ext, gridLines)
+            addSegment(p, -ext, 0f, k, ext, 0f, k, gridLines)
             k += GRID
         }
         stroke.color = withAlpha(t.grid, (46 * gridAlpha).toInt())
         stroke.strokeWidth = max(1f, 0.8f * u)
-        if (gridAlpha > 0f) c.drawPath(gridPath, stroke)
+        if (gridAlpha > 0f && gridLines.size > 0) c.drawLines(gridLines.data, 0, gridLines.size, stroke)
 
         val colour = if (live) t.car else withAlpha(t.car, 90)
         // the boot draws the car line by line: body first, then the lights and wheels
@@ -678,10 +724,11 @@ class DashRenderer(assets: AssetManager) {
         toCam(p, 0f, 0.6f, 0f, cb)
         val centre = cb[2]
         // near side bright, far side dim: the depth cue that makes a wireframe read as a solid car
-        val body = arrayOf(Path(), Path(), Path())
+        val body = bodyLines
+        for (b in body) b.clear()
         val kit = cfg.bodyKit
         addSegmentsByDepth(p, part(CarWireframe.body(kit), 0f, 0.7f), body, centre)
-        val heads = Path()
+        val heads = headLines.also { it.clear() }
         addSegments(p, part(CarWireframe.headLights(kit), 0.6f, 0.8f), heads)
         val steerRad = Math.toRadians(((s[Channel.STEERING] ?: 0f) / 13.5f).toDouble()).toFloat()
         for ((ax, front) in listOf(CarWireframe.FRONT_AXLE to true, CarWireframe.REAR_AXLE to false)) {
@@ -697,17 +744,17 @@ class DashRenderer(assets: AssetManager) {
                 } else addSegmentsByDepth(p, segs, body, centre)
             }
         }
-        glowPath(c, body[2], withAlpha(colour, (Color.alpha(colour) * 0.28f).toInt()), 0.9f * u)
-        glowPath(c, body[1], withAlpha(colour, (Color.alpha(colour) * 0.62f).toInt()), 1.1f * u)
-        glowPath(c, body[0], colour, 1.4f * u)
+        glowLines(c, body[2], withAlpha(colour, (Color.alpha(colour) * 0.28f).toInt()), 0.9f * u)
+        glowLines(c, body[1], withAlpha(colour, (Color.alpha(colour) * 0.62f).toInt()), 1.1f * u)
+        glowLines(c, body[0], colour, 1.4f * u)
         val lights = s[Channel.HEADLIGHTS, 10_000]
-        glowPath(c, heads, if (live) mix(colour, t.text, if ((lights ?: 0f) >= 2f) 0.85f else 0.55f) else colour,
+        glowLines(c, heads, if (live) mix(colour, t.text, if ((lights ?: 0f) >= 2f) 0.85f else 0.55f) else colour,
             (if ((lights ?: 0f) >= 2f) 2.2f else 1.5f) * u)
 
         val braking = (s[Channel.BRAKE] ?: 0f) > 5f || (s[Channel.BRAKE_LIGHT] ?: 0f) >= 0.5f
-        val tails = Path()
+        val tails = tailLines.also { it.clear() }
         addSegments(p, part(CarWireframe.tailLights(kit), 0.6f, 0.8f), tails)
-        glowPath(c, tails, if (braking) t.text else colour, (if (braking) 2.6f else 1.3f) * u)
+        glowLines(c, tails, if (braking) t.text else colour, (if (braking) 2.6f else 1.3f) * u)
 
         if (callouts && live) {
             val wheels = listOf(
@@ -853,6 +900,7 @@ class DashRenderer(assets: AssetManager) {
     }
 
     internal fun traceLine(c: Canvas, r: RectF, data: FloatArray, lo: Float, hi: Float, colour: Int, width: Float) {
+        // a graph is one long polyline, which a Path draws faster than many short lines
         path.reset()
         var started = false
         for (i in data.indices) {
@@ -862,9 +910,11 @@ class DashRenderer(assets: AssetManager) {
             val y = r.bottom - r.height() * ((v - lo) / (hi - lo)).coerceIn(0f, 1f)
             if (started) path.lineTo(x, y) else { path.moveTo(x, y); started = true }
         }
-        stroke.color = withAlpha(colour, 60)
-        stroke.strokeWidth = width * 3f
-        c.drawPath(path, stroke)
+        if (glowOn) {
+            stroke.color = withAlpha(colour, 60)
+            stroke.strokeWidth = width * 3f
+            c.drawPath(path, stroke)
+        }
         stroke.color = colour
         stroke.strokeWidth = width
         c.drawPath(path, stroke)
@@ -1124,7 +1174,7 @@ class DashRenderer(assets: AssetManager) {
         text.letterSpacing = 0.04f
         text.color = colour
         text.textAlign = align
-        if (glow) text.setShadowLayer(size * 0.22f, 0f, 0f, withAlpha(colour, 150))
+        if (glow && glowOn) text.setShadowLayer(size * 0.22f, 0f, 0f, withAlpha(colour, 150))
         c.drawText(s, x, y, text)
         text.clearShadowLayer()
     }

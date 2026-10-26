@@ -215,7 +215,7 @@ internal fun DashRenderer.dynoPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashCo
 
 internal fun DashRenderer.systemsPage(c: Canvas, r: RectF, s: Snapshot, cfg: DashConfig) {
     val body = pageFrame(c, r, "SYSTEMS · SIGNALS",
-        "${Analytics.liveSignals} SIGNALS · ${Analytics.verifiedSignals} VERIFIED · ${ChannelInfo.ALL.size} KNOWN")
+        "${Analytics.liveSignals} SIGNALS · ${Analytics.verifiedSignals} VERIFIED · DASH ${fps.roundToInt()} FPS · ${frameMs.roundToInt()} MS")
     val rows = ChannelInfo.ALL
     val size = min(7f * u, body.height() / 24f * 0.62f)
     val lineH = size * 1.6f

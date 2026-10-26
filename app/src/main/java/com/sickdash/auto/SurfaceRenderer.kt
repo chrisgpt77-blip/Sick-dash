@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.view.Surface
 import androidx.car.app.AppManager
 import androidx.car.app.CarContext
@@ -28,9 +29,6 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
         }
     }
 
-    /** Called after a tap changed something the action strip shows. */
-    var onChanged: (() -> Unit)? = null
-
     private val lock = Any()
     private var surface: Surface? = null
     private var width = 0
@@ -41,9 +39,18 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
 
     private val frame = object : Runnable {
         override fun run() {
+            val started = SystemClock.uptimeMillis()
             renderFrame()
-            handler?.postDelayed(this, 33)
+            // ~30 fps: wait out whatever is left of this frame's 33 ms
+            val h = handler ?: return
+            h.removeCallbacks(this)
+            h.postAtTime(this, started + 33)
         }
+    }
+
+    /** Draws the next frame now rather than on the next tick, so a tap shows straight away. */
+    private fun redrawNow() {
+        handler?.let { it.removeCallbacks(frame); it.post(frame) }
     }
 
     private val callback = object : SurfaceCallback {
@@ -69,7 +76,7 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
 
         // Touchscreen head units: taps hit the HUD tabs, drags (in pan mode) orbit the car.
         override fun onClick(x: Float, y: Float) {
-            if (dash.handleTap(x, y)) onChanged?.invoke()
+            if (dash.handleTap(x, y)) redrawNow()
         }
 
         override fun onScroll(distanceX: Float, distanceY: Float) {

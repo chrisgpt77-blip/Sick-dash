@@ -105,6 +105,7 @@ class DashScreenshotTest {
         if (sim == null) r.resetSession()
         VehicleData.clearAll()
         VehicleData.sniffer.clear()
+        if (sim == null) { com.sickdash.data.Navigation.clearDemo(); com.sickdash.data.NowPlaying.clearDemo() }
         VehicleData.linkMode = if (sim != null) "DEMO" else "CAN"
         VehicleData.nodes = if (sim != null) emptyMap()
             else CanProfile.parse(ctx.assets.open(cfg.car.profileAsset).bufferedReader().use { it.readText() }).nodes
@@ -157,6 +158,9 @@ class DashScreenshotTest {
         shot("drive_rear34_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, yaw = (Math.PI - 0.7).toFloat())
         shot("drive_front_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, yaw = 0.25f)
         shot("drive_stock_1280x720", 1280, 720, DashRenderer.Page.DRIVE, 3100f, 64f, 4, stock = true)
+        PreferenceManager.getDefaultSharedPreferences(ctx).edit().putBoolean("glow", false).commit()
+        shot("drive_noglow_800x480", 800, 480, DashRenderer.Page.DRIVE, 4300f, 88f, 3)
+        PreferenceManager.getDefaultSharedPreferences(ctx).edit().remove("glow").commit()
         shot("engine_1280x720", 1280, 720, DashRenderer.Page.ENGINE, 5200f, 96f, 3, "cyberpunk")
         shot("handling_1280x720", 1280, 720, DashRenderer.Page.HANDLING, 5200f, 96f, 3)
         shot("body_1280x720", 1280, 720, DashRenderer.Page.BODY, 2400f, 48f, 3)

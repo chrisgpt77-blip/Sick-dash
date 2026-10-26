@@ -116,6 +116,11 @@
             app:title="Tach maximum RPM"
             app:useSimpleSummaryProvider="true" />
         <SwitchPreferenceCompat
+            app:key="glow"
+            app:title="Glow effects"
+            app:summary="Soft halos around text and lines. Turn off for sharper edges if the car screen looks blurry."
+            app:defaultValue="true" />
+        <SwitchPreferenceCompat
             app:key="fill_car_screen"
             app:title="Fill the car screen"
             app:summary="Draw under Android Auto's buttons, which hide when you're not touching the screen. Turn off to keep the dash clear of them."

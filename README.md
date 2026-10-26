@@ -157,10 +157,11 @@ GR86 / BRZ factory numbers (Subaru spec sheet):
 Tyres are 215/40R18, or 215/45R17 on base cars. Redline is 7,500 rpm.
 
 Car-screen controls:
-- **Action strip:** page (next page), Pages (task switcher), Theme, Reset.
-- **Map pan button:** drag to orbit the car.
+- **Action strip:** Android Auto requires one, and drops it down over the top of the screen on every tap, so it's a single grid icon that opens the page switcher. Everything else is on the dash itself.
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
 - **Full screen:** the dash fills the whole car screen, and Android Auto's buttons float over it, hiding when you're not touching the screen. If your car's buttons never hide and cover something, turn off **Settings → Fill the car screen** to keep the dash clear of them.
+- **Sharpness:** Android Auto often streams to the car at 800×480. In the Android Auto settings on your phone, tap **Version** about 10 times, then ⋮ → **Developer settings** → **Video resolution** → **Allow up to 1280x720**, and reconnect. If it still looks soft, turn off **Settings → Glow effects** for crisper text and lines.
+- **Speed:** the Systems page header shows how fast the dash is drawing on the screen you're looking at (FPS and milliseconds per frame).
 
 ## Spotify and Google Maps
 
