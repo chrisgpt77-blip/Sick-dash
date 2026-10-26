@@ -51,6 +51,12 @@ class DashRenderer(assets: AssetManager) {
     /** Called when a setting is changed from the HUD (theme, colours, tiles); the host saves it. Null removes it. */
     var onSetting: ((key: String, value: String?) -> Unit)? = null
 
+    /**
+     * Drawing on the Android Auto screen, whose own bar already shows the time and what's
+     * playing; the dash leaves those out there.
+     */
+    var carScreen = false
+
     /** The task switcher (page overview) is open. */
     @Volatile var switcherOpen = false
 
@@ -233,9 +239,11 @@ class DashRenderer(assets: AssetManager) {
 
         // right: link state, gearbox, clock
         var x = r.right
-        val time = clock.format(Date(s.now))
-        display(c, time, x, y + 6f * u, 15f * u, t.text, Paint.Align.RIGHT)
-        x -= textWidth(time, Fonts.display, 15f * u, 0.04f) + 14f * u
+        if (!carScreen) {
+            val time = clock.format(Date(s.now))
+            display(c, time, x, y + 6f * u, 15f * u, t.text, Paint.Align.RIGHT)
+            x -= textWidth(time, Fonts.display, 15f * u, 0.04f) + 14f * u
+        }
         val (word, col) = when (s.link.state) {
             LinkState.CONNECTED -> "LINKED" to t.text
             LinkState.CONNECTING -> "LINKING" to t.secondary
@@ -519,7 +527,7 @@ class DashRenderer(assets: AssetManager) {
         val live = s.link.state == LinkState.CONNECTED || s[Channel.RPM] != null
         drawCar(c, stage, s, cfg, live, callouts = true)
         turnCard(c, stage)
-        mediaCard(c, stage)
+        if (!carScreen) mediaCard(c, stage)
 
         // camera buttons and caption
         var x = stage.right - 6f * u

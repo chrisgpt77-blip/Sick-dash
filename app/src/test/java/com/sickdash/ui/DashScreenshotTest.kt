@@ -92,8 +92,10 @@ class DashScreenshotTest {
         /** Capture this many ms into the full boot (or, with [short], the system check). */
         boot: Long? = null, short: Boolean = false,
         poweredOff: Boolean = false, switcher: Boolean = false,
+        /** Draw as on the Android Auto screen. */
+        car: Boolean = false,
     ) {
-        val r = DashRenderer(ctx.assets).also { it.page = page; it.cam = cam }
+        val r = DashRenderer(ctx.assets).also { it.page = page; it.cam = cam; it.carScreen = car }
         r.bootPending = false
         // ORBIT holds a hand-set angle: orbit() moves the target by -dx * 0.008 from 0.7 rad.
         if (yaw != null) { r.cam = DashRenderer.Cam.ORBIT; r.orbit((0.7f - yaw) / 0.008f) }
@@ -192,6 +194,7 @@ class DashScreenshotTest {
         shot("body_demo_1280x720", 1280, 720, DashRenderer.Page.BODY, sim = 260)
         PreferenceManager.getDefaultSharedPreferences(ctx).edit().putString("dash_tiles", "vehicle,music,clutch,dyno,vdc,shift").commit()
         shot("demo_drive_wide_1920x720", 1920, 720, DashRenderer.Page.DRIVE, sim = 90, theme = "wrblue")
+        shot("car_screen_demo_1280x720", 1280, 720, DashRenderer.Page.DRIVE, sim = 30, car = true)
         shot("demo_shift_nav_1280x720", 1280, 720, DashRenderer.Page.SHIFT, sim = 30)
         PreferenceManager.getDefaultSharedPreferences(ctx).edit().remove("dash_tiles").commit()
         shot("body_demo_800x480", 800, 480, DashRenderer.Page.BODY, sim = 40)

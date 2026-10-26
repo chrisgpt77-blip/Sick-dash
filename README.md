@@ -167,7 +167,7 @@ Car-screen controls:
 
 ![Drive page with the next turn and now playing (demo)](docs/screenshots/demo_drive_wide_1920x720.png)
 
-The Drive page shows what's playing on the phone, with album art, a progress bar and previous/play-pause/next buttons. It works with Spotify, YouTube Music and any other player, because it reads Android's media sessions. A **Music** tile can also go beside the car (pick it on the Style page); tapping it plays or pauses. A "NOW PLAYING" pop-up announces each new track.
+The Drive page shows what's playing on the phone, with album art, a progress bar and previous/play-pause/next buttons. (On the Android Auto screen the card is left out, because Android Auto's own bar already shows what's playing; the dash's clock is left out there for the same reason.) It works with Spotify, YouTube Music and any other player, because it reads Android's media sessions. A **Music** tile can also go beside the car (pick it on the Style page); tapping it plays or pauses. A "NOW PLAYING" pop-up announces each new track.
 
 While Google Maps is navigating, the next turn shows as a card on the Drive page (arrow, distance, instruction, ETA). On every other page it replaces the link chip in the header, e.g. `▶ 0.3 MI · TURN RIGHT ONTO MAIN ST`. It's read from Maps' turn-by-turn notification. Maps doesn't document that notification, so if a Maps update changes its layout the card may show the wrong text or nothing.
 

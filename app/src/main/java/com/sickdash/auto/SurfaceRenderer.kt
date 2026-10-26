@@ -22,6 +22,7 @@ import com.sickdash.ui.DashRenderer
 /** Draws the dashboard onto the Android Auto "map" surface at ~30 fps. */
 class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) : DefaultLifecycleObserver {
     val dash = DashRenderer(carContext.assets).apply {
+        carScreen = true
         onSetting = { key, value ->
             PreferenceManager.getDefaultSharedPreferences(carContext).edit().apply {
                 if (value == null) remove(key) else putString(key, value)
