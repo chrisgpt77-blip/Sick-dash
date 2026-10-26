@@ -160,6 +160,7 @@ Car-screen controls:
 - **Action strip:** page (next page), Pages (task switcher), Theme, Reset.
 - **Map pan button:** drag to orbit the car.
 - **Touchscreen head units:** taps on the HUD tabs and camera buttons work directly.
+- **Full screen:** the dash fills the whole car screen, and Android Auto's buttons float over it, hiding when you're not touching the screen. If your car's buttons never hide and cover something, turn off **Settings → Fill the car screen** to keep the dash clear of them.
 
 ## Spotify and Google Maps
 

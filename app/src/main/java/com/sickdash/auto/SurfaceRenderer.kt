@@ -111,10 +111,14 @@ class SurfaceRenderer(private val carContext: CarContext, lifecycle: Lifecycle) 
             val canvas = try { s.lockHardwareCanvas() } catch (e: Exception) { return }
             try {
                 canvas.drawColor(android.graphics.Color.rgb(6, 7, 10))
+                val cfg = DashConfig.get(carContext)
+                // Android Auto floats its buttons over the surface and hides them when the screen
+                // isn't being touched, so by default the dash fills the whole surface under them,
+                // like a map does. The visible area is what's clear of them right now.
                 val v = visible
-                val area = if (v != null && v.width() > width / 2 && v.height() > height / 2) RectF(v)
+                val area = if (!cfg.fillCarScreen && v != null && v.width() > width / 2 && v.height() > height / 2) RectF(v)
                 else RectF(0f, 0f, width.toFloat(), height.toFloat())
-                dash.draw(canvas, area, VehicleData.snapshot(), DashConfig.get(carContext))
+                dash.draw(canvas, area, VehicleData.snapshot(), cfg)
             } finally {
                 s.unlockCanvasAndPost(canvas)
             }

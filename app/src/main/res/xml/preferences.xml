@@ -116,6 +116,11 @@
             app:title="Tach maximum RPM"
             app:useSimpleSummaryProvider="true" />
         <SwitchPreferenceCompat
+            app:key="fill_car_screen"
+            app:title="Fill the car screen"
+            app:summary="Draw under Android Auto's buttons, which hide when you're not touching the screen. Turn off to keep the dash clear of them."
+            app:defaultValue="true" />
+        <SwitchPreferenceCompat
             app:key="phone_g"
             app:title="Use phone sensors for G-meter"
             app:summary="Mount the phone upright facing you or flat with its top toward the windscreen"
